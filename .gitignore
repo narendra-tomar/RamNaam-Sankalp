@@ -1,0 +1,10 @@
+# Do NOT commit your Firebase config with real keys!
+# If you use Git, keep your keys secret:
+js/firebase-config.js
+
+# Optional
+node_modules/
+.DS_Store
+.env
+.env.local
+*.log

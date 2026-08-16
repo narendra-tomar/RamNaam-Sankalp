@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>RamNaam Sankalp</title>
+<meta name="theme-color" content="#f6ede0">
+<meta name="description" content="RamNaam Sankalp — Your lifelong Naam Jaap journey">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===================== LOADING ===================== -->
+<div id="loadingScreen" class="screen center-screen">
+  <div class="om-mark">श्री राम</div>
+  <div class="loader-dot"></div>
+</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen" class="screen center-screen hidden">
+  <div class="login-card">
+    <div class="om-mark">॥ श्री राम ॥</div>
+    <h1 class="app-title">RamNaam Sankalp</h1>
+    <p class="app-subtitle">Your lifelong Naam Jaap journey</p>
+    <button id="googleSignInBtn" class="btn btn-primary btn-google">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.69 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <p class="login-note">Free forever · Your data syncs across all your devices</p>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="appShell" class="screen hidden">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="topbar-om">राम</span>
+      <span class="topbar-title">RamNaam Sankalp</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      <button id="signOutBtn" class="icon-btn" title="Sign out" aria-label="Sign out">⏻</button>
+    </div>
+  </header>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="milestones">Milestones</button>
+    <button class="tab-btn" data-tab="history">History</button>
+    <button class="tab-btn" data-tab="sankalp">Sankalp</button>
+  </nav>
+
+  <main class="content">
+
+    <!-- ---------- DASHBOARD TAB ---------- -->
+    <section id="tab-dashboard" class="tab-panel active">
+
+      <div class="hero-card">
+        <div class="hero-label">1 BILLION SANKALP</div>
+        <div class="hero-count" id="lifetimeCount">0</div>
+        <div class="hero-unit">JAAP</div>
+
+        <div class="progress-ring-wrap">
+          <svg class="progress-ring" viewBox="0 0 140 140">
+            <circle class="ring-bg" cx="70" cy="70" r="60"></circle>
+            <circle id="ringFg" class="ring-fg" cx="70" cy="70" r="60"></circle>
+          </svg>
+          <div class="ring-center">
+            <div id="ringPercent" class="ring-percent">0%</div>
+            <div class="ring-caption">of 100 Cr</div>
+          </div>
+        </div>
+
+        <div class="hero-sub">
+          <div><span id="pct10cr">0%</span> of 10 Crore</div>
+          <div><span id="pct100cr">0%</span> of 100 Crore (1 Billion)</div>
+        </div>
+      </div>
+
+      <div class="card milestone-card">
+        <div class="card-heading">Current Milestone</div>
+        <div class="milestone-row"><span>Target</span><strong id="msTarget">1 Crore</strong></div>
+        <div class="milestone-row"><span>Completed</span><strong id="msCompleted">0</strong></div>
+        <div class="milestone-row"><span>Remaining</span><strong id="msRemaining">0</strong></div>
+        <div class="bar"><div id="msBar" class="bar-fill"></div></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <div class="stat-label">Today</div>
+          <div class="stat-value" id="statToday">0</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">This Week</div>
+          <div class="stat-value" id="statWeek">0</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">This Month</div>
+          <div class="stat-value" id="statMonth">0</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">This Year</div>
+          <div class="stat-value" id="statYear">0</div>
+        </div>
+      </div>
+
+      <div class="card streak-card">
+        <span class="streak-flame">🔥</span>
+        <span>Sadhana Streak: <strong id="streakCount">0</strong> Days</span>
+      </div>
+
+      <div class="action-row">
+        <button id="addJaapBtn" class="btn btn-primary">+ Add Jaap</button>
+        <button id="addMalaBtn" class="btn btn-secondary">+ Add Mala</button>
+      </div>
+      <div class="action-row">
+        <button id="startSessionBtn" class="btn btn-outline btn-full">Start Jaap Session</button>
+      </div>
+    </section>
+
+    <!-- ---------- MILESTONES TAB ---------- -->
+    <section id="tab-milestones" class="tab-panel">
+      <div class="card">
+        <div class="card-heading">Phase I — Foundation (1–13 Crore)</div>
+        <div id="milestonesPhase1" class="milestone-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-heading">Phase II — Expansion (15–50 Crore)</div>
+        <div id="milestonesPhase2" class="milestone-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-heading">Phase III — Maha Sankalp (60–100 Crore)</div>
+        <div id="milestonesPhase3" class="milestone-list"></div>
+      </div>
+    </section>
+
+    <!-- ---------- HISTORY TAB ---------- -->
+    <section id="tab-history" class="tab-panel">
+      <div class="card">
+        <div class="card-heading">Jaap History</div>
+        <div id="historyList" class="history-list">
+          <div class="empty-state">No entries yet. Add your first Jaap.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- SANKALP TAB ---------- -->
+    <section id="tab-sankalp" class="tab-panel">
+      <div class="card">
+        <div class="card-heading">My Sankalp</div>
+        <label class="field-label">Target Milestone</label>
+        <select id="sankalpTargetSelect" class="field-input"></select>
+        <label class="field-label">Target Date</label>
+        <input type="date" id="sankalpTargetDate" class="field-input">
+        <button id="saveSankalpBtn" class="btn btn-primary btn-full">Save Sankalp</button>
+      </div>
+      <div id="sankalpResult" class="card hidden">
+        <div class="card-heading">Sankalp Progress</div>
+        <div class="milestone-row"><span>Remaining Jaap</span><strong id="sankalpRemaining">-</strong></div>
+        <div class="milestone-row"><span>Days Remaining</span><strong id="sankalpDays">-</strong></div>
+        <div class="milestone-row"><span>Required Average</span><strong id="sankalpRequired">-</strong></div>
+        <div class="milestone-row"><span>Today's Target</span><strong id="sankalpTodayTarget">-</strong></div>
+        <div class="milestone-row"><span>Ahead / Behind</span><strong id="sankalpAheadBehind">-</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-heading">Completion Projection</div>
+        <label class="field-label">Your current daily pace</label>
+        <div id="projectionPace" class="projection-pace">0 Jaap/day (based on last 7 days)</div>
+        <table class="projection-table">
+          <thead><tr><th>Daily Jaap</th><th>1 Cr</th><th>13 Cr</th><th>100 Cr</th></tr></thead>
+          <tbody id="projectionTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+<div id="modalOverlay" class="modal-overlay hidden">
+
+  <div id="addJaapModal" class="modal hidden">
+    <div class="modal-header"><span>Add Jaap</span><button class="modal-close" data-close>&times;</button></div>
+    <label class="field-label">Direct Jaap Count</label>
+    <input type="number" id="jaapCountInput" class="field-input" placeholder="e.g. 5000" min="1">
+    <label class="field-label">Date</label>
+    <input type="date" id="jaapDateInput" class="field-input">
+    <label class="field-label">Notes (optional)</label>
+    <input type="text" id="jaapNotesInput" class="field-input" placeholder="e.g. Morning jaap">
+    <button id="submitJaapBtn" class="btn btn-primary btn-full">Save Entry</button>
+  </div>
+
+  <div id="addMalaModal" class="modal hidden">
+    <div class="modal-header"><span>Add Mala</span><button class="modal-close" data-close>&times;</button></div>
+    <label class="field-label">Number of Malas</label>
+    <input type="number" id="malaCountInput" class="field-input" placeholder="e.g. 10" min="1">
+    <label class="field-label">Count per Mala</label>
+    <input type="number" id="malaSizeInput" class="field-input" value="108" min="1">
+    <div class="mala-total">Total: <strong id="malaTotalPreview">0</strong> Jaap</div>
+    <label class="field-label">Date</label>
+    <input type="date" id="malaDateInput" class="field-input">
+    <button id="submitMalaBtn" class="btn btn-primary btn-full">Save Entry</button>
+  </div>
+
+  <div id="sessionModal" class="modal hidden">
+    <div class="modal-header"><span>Jaap Session</span><button class="modal-close" data-close>&times;</button></div>
+    <div class="session-om">राम</div>
+    <div id="sessionTimer" class="session-timer">00:00:00</div>
+    <div id="sessionCount" class="session-count">0</div>
+    <div class="session-caption">Jaap Count</div>
+    <div class="action-row">
+      <button id="sessionPlus1" class="btn btn-outline">+1</button>
+      <button id="sessionPlus108" class="btn btn-outline">+108</button>
+    </div>
+    <div class="action-row">
+      <button id="sessionPauseBtn" class="btn btn-secondary">Pause</button>
+      <button id="sessionCompleteBtn" class="btn btn-primary">Complete</button>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-header"><span>Settings</span><button class="modal-close" data-close>&times;</button></div>
+    <label class="field-label">Starting Jaap Count (before using this app)</label>
+    <input type="number" id="startingCountInput" class="field-input" min="0">
+    <label class="field-label">Default Mala Size</label>
+    <input type="number" id="defaultMalaSizeInput" class="field-input" value="108" min="1">
+    <button id="saveSettingsBtn" class="btn btn-primary btn-full">Save Settings</button>
+    <hr class="divider">
+    <button id="exportDataBtn" class="btn btn-outline btn-full">Export My Data (JSON)</button>
+  </div>
+
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/indian-numbers.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
