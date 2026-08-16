@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ramnaam-v3';
+const CACHE_NAME = 'ramnaam-v4';
 const urlsToCache = [
   '/',
   '/index.html',
