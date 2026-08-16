@@ -633,6 +633,52 @@ function downloadJSON(json, filename) {
 // ============================================================
 // SERVICE WORKER (PWA)
 // ============================================================
+let deferredPrompt;
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallPrompt();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+});
+
+function showInstallPrompt() {
+  if (deferredPrompt) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.background = 'linear-gradient(160deg, #ffd699 0%, #f3ddb8 140%)';
+    card.style.marginBottom = '16px';
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <div class="card-heading">Install RamNaam Sankalp</div>
+          <p style="font-size: 14px; color: var(--text-primary); margin: 8px 0 0;">Add to your home screen for quick access</p>
+        </div>
+        <button id="installBtn" class="btn btn-primary" style="white-space: nowrap; margin-left: 12px;">Install</button>
+      </div>
+    `;
+
+    const content = document.querySelector('.content');
+    if (content && content.firstChild) {
+      content.insertBefore(card, content.firstChild);
+    }
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredPrompt = null;
+          card.remove();
+        }
+      }
+    });
+  }
 }

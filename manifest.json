@@ -10,30 +10,23 @@
   "theme_color": "#d97b2e",
   "icons": [
     {
-      "src": "icons/favicon.png",
+      "src": "/icons/favicon.png",
       "sizes": "64x64",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-192.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     }
   ],
-  "categories": ["productivity", "lifestyle"],
-  "screenshots": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
-  ]
+  "categories": ["productivity", "lifestyle"]
 }
