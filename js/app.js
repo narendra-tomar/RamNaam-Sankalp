@@ -94,11 +94,16 @@ const toast = document.getElementById('toast');
 // ============================================================
 // AUTH
 // ============================================================
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    await loadUserData();
+    userData = { startingCount: 0, defaultMalaSize: 108 };
     showApp();
+    // Load data in background
+    loadUserData().then(() => refreshUI()).catch(err => {
+      console.error('Error:', err);
+      refreshUI();
+    });
   } else {
     currentUser = null;
     userData = null;
@@ -134,17 +139,22 @@ function showApp() {
 // USER DATA
 // ============================================================
 async function loadUserData() {
-  const userRef = doc(db, 'users', currentUser.uid);
-  const snap = await getDoc(userRef);
+  try {
+    const userRef = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(userRef);
 
-  if (!snap.exists()) {
-    userData = {
-      startingCount: 0,
-      defaultMalaSize: 108,
-    };
-    await setDoc(userRef, userData);
-  } else {
-    userData = snap.data();
+    if (!snap.exists()) {
+      userData = {
+        startingCount: 0,
+        defaultMalaSize: 108,
+      };
+      await setDoc(userRef, userData);
+    } else {
+      userData = snap.data();
+    }
+  } catch (err) {
+    console.error('Error loading user data:', err);
+    userData = { startingCount: 0, defaultMalaSize: 108 };
   }
 }
 
@@ -236,17 +246,22 @@ async function getStreak() {
 // UI REFRESH
 // ============================================================
 async function refreshUI() {
-  const lifetime = await getLifetimeCount();
-  const today = await getTodayCount();
-  const week = await getCountInRange(getDateBefore(7), getTodayStr());
-  const month = await getCountInRange(getDateBefore(30), getTodayStr());
-  const year = await getCountInRange(getDateBefore(365), getTodayStr());
-  const streak = await getStreak();
+  try {
+    const lifetime = await getLifetimeCount();
+    const today = await getTodayCount();
+    const week = await getCountInRange(getDateBefore(7), getTodayStr());
+    const month = await getCountInRange(getDateBefore(30), getTodayStr());
+    const year = await getCountInRange(getDateBefore(365), getTodayStr());
+    const streak = await getStreak();
 
-  updateDashboard(lifetime, today, week, month, year, streak);
-  updateMilestones(lifetime);
-  updateHistory();
-  updateSankalp();
+    updateDashboard(lifetime, today, week, month, year, streak);
+    updateMilestones(lifetime);
+    updateHistory();
+    updateSankalp();
+  } catch (err) {
+    console.error('Error refreshing UI:', err);
+    updateDashboard(0, 0, 0, 0, 0, 0);
+  }
 }
 
 function updateDashboard(lifetime, today, week, month, year, streak) {
