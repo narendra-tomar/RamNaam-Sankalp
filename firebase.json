@@ -8,23 +8,7 @@
     ],
     "rewrites": [
       {
-        "source": "!/js/**",
-        "destination": "/index.html"
-      },
-      {
-        "source": "!/css/**",
-        "destination": "/index.html"
-      },
-      {
-        "source": "!/images/**",
-        "destination": "/index.html"
-      },
-      {
-        "source": "!/icons/**",
-        "destination": "/index.html"
-      },
-      {
-        "source": "!/**.*",
+        "source": "^(?!.*\\.)(?!.*__).+$",
         "destination": "/index.html"
       }
     ]
