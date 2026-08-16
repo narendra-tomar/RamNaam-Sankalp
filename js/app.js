@@ -188,15 +188,22 @@ async function getLifetimeCount() {
 }
 
 async function getTodayCount() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayStr();
+  console.log('Today date:', today);
   const q = query(
     collection(db, 'jaapEntries'),
     where('userId', '==', currentUser.uid),
-    where('date', '==', today)
   );
   const snap = await getDocs(q);
   let total = 0;
-  snap.forEach(doc => total += doc.data().count || 0);
+  snap.forEach(doc => {
+    const date = doc.data().date;
+    console.log('Entry date:', date, 'count:', doc.data().count);
+    if (date === today) {
+      total += doc.data().count || 0;
+    }
+  });
+  console.log('Today total:', total);
   return total;
 }
 
@@ -207,12 +214,15 @@ async function getCountInRange(startDate, endDate) {
   );
   const snap = await getDocs(q);
   let total = 0;
+  console.log('Range query:', startDate, 'to', endDate);
   snap.forEach(doc => {
     const date = doc.data().date;
+    console.log('Checking:', date, 'in range?', date >= startDate && date <= endDate);
     if (date >= startDate && date <= endDate) {
       total += (doc.data().count || 0);
     }
   });
+  console.log('Range total:', total);
   return total;
 }
 
@@ -229,13 +239,14 @@ async function getStreak() {
 
   const sortedDates = Array.from(datesSet).sort().reverse();
   let streak = 0;
-  let currentDate = new Date();
+  let checkDate = getTodayStr();
+
   for (const dateStr of sortedDates) {
-    const entryDate = new Date(dateStr);
-    const diff = Math.floor((currentDate - entryDate) / (1000 * 60 * 60 * 24));
-    if (diff === streak) {
+    if (dateStr === checkDate) {
       streak++;
-      currentDate = entryDate;
+      const d = new Date(checkDate);
+      d.setDate(d.getDate() - 1);
+      checkDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     } else {
       break;
     }
@@ -271,9 +282,11 @@ function updateDashboard(lifetime, today, week, month, year, streak) {
   const pct100 = (lifetime / BILLION) * 100;
   const pct10 = (lifetime / (10 * CRORE)) * 100;
 
-  ringPercent.textContent = pct100.toFixed(2) + '%';
-  pct10cr.textContent = pct10.toFixed(2) + '%';
-  pct100cr.textContent = pct100.toFixed(2) + '%';
+  const pct13cr = (lifetime / (13 * CRORE)) * 100;
+
+  ringPercent.textContent = pct100.toFixed(4) + '%';
+  pct10cr.textContent = pct13cr.toFixed(4) + '%';
+  pct100cr.textContent = pct100.toFixed(4) + '%';
 
   const circumference = 2 * Math.PI * 60;
   const offset = circumference - (pct100 / 100) * circumference;
@@ -318,6 +331,16 @@ function renderMilestoneList(lifetime) {
   });
 }
 
+let currentEditId = null;
+
+// Edit entry functions - must be global
+window.editEntry = function(id, count, date) {
+  currentEditId = id;
+  document.getElementById('editCountInput').value = count;
+  document.getElementById('editDateInput').value = date;
+  openModal(document.getElementById('editEntryModal'));
+};
+
 async function updateHistory() {
   const q = query(collection(db, 'jaapEntries'), where('userId', '==', currentUser.uid));
   const snap = await getDocs(q);
@@ -330,7 +353,7 @@ async function updateHistory() {
     historyList.innerHTML = '<div class="empty-state">No entries yet. Add your first Jaap.</div>';
   } else {
     historyList.innerHTML = entries.slice(0, 50).map(e => `
-      <div class="history-item">
+      <div class="history-item" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="editEntry('${e.id}', ${e.count}, '${e.date}')">
         <div>
           <div class="history-date">${e.date}</div>
           ${e.notes ? `<div class="history-notes">${e.notes}</div>` : ''}
@@ -340,6 +363,31 @@ async function updateHistory() {
     `).join('');
   }
 }
+
+// Add event listeners for edit modal
+document.getElementById('saveEditBtn').addEventListener('click', async () => {
+  if (!currentEditId) return;
+  const newCount = parseInt(document.getElementById('editCountInput').value) || 0;
+  const newDate = document.getElementById('editDateInput').value;
+
+  if (newCount > 0) {
+    const ref = doc(db, 'jaapEntries', currentEditId);
+    await updateDoc(ref, { count: newCount, date: newDate });
+    closeAllModals();
+    refreshUI();
+    showToast('Entry updated');
+  }
+});
+
+document.getElementById('deleteEntryBtn').addEventListener('click', async () => {
+  if (!currentEditId) return;
+  if (confirm('Delete this entry?')) {
+    await deleteDoc(doc(db, 'jaapEntries', currentEditId));
+    closeAllModals();
+    refreshUI();
+    showToast('Entry deleted');
+  }
+});
 
 function updateProjection(lifetime, dailyPace) {
   const tbody = document.getElementById('projectionTableBody');
@@ -535,13 +583,35 @@ function formatTime(seconds) {
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split('T')[0];
+  const formatter = new Intl.DateTimeFormat('en-IN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata'
+  });
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  const result = `${year}-${month}-${day}`;
+  console.log('IST Today:', result);
+  return result;
 }
 
 function getDateBefore(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
-  return d.toISOString().split('T')[0];
+  const formatter = new Intl.DateTimeFormat('en-IN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata'
+  });
+  const parts = formatter.formatToParts(d);
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  return `${year}-${month}-${day}`;
 }
 
 function showToast(msg) {
