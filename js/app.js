@@ -325,12 +325,6 @@ async function updateHistory() {
   }
 }
 
-function updateSankalp() {
-  const select = document.getElementById('sankalpTargetSelect');
-  select.innerHTML = MILESTONES.map(m => `<option value="${m.target}">${m.label}</option>`).join('');
-  document.getElementById('sankalpTargetDate').valueAsDate = new Date();
-}
-
 function updateProjection(lifetime, dailyPace) {
   const tbody = document.getElementById('projectionTableBody');
   const paces = [10000, 25000, 50000, 100000, 200000, 500000, 1000000];
@@ -378,6 +372,7 @@ modalOverlay.addEventListener('click', (e) => {
 function openModal(modal) {
   modalOverlay.classList.remove('hidden');
   modal.classList.remove('hidden');
+  setDefaultDates();
 }
 
 function closeAllModals() {
@@ -385,9 +380,14 @@ function closeAllModals() {
   document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
 }
 
-document.getElementById('jaapCountInput').valueAsDate = new Date();
-document.getElementById('jaapDateInput').valueAsDate = new Date();
-document.getElementById('malaDateInput').valueAsDate = new Date();
+// Set default dates when modals open
+function setDefaultDates() {
+  const today = new Date().toISOString().split('T')[0];
+  const jaapDate = document.getElementById('jaapDateInput');
+  const malaDate = document.getElementById('malaDateInput');
+  if (jaapDate) jaapDate.value = today;
+  if (malaDate) malaDate.value = today;
+}
 
 document.getElementById('submitJaapBtn').addEventListener('click', async () => {
   const count = parseInt(document.getElementById('jaapCountInput').value) || 0;
