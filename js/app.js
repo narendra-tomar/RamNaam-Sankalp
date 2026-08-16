@@ -78,6 +78,7 @@ const msBar = document.getElementById('msBar');
 const addJaapBtn = document.getElementById('addJaapBtn');
 const addMalaBtn = document.getElementById('addMalaBtn');
 const startSessionBtn = document.getElementById('startSessionBtn');
+const refreshBtn = document.getElementById('refreshBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -209,7 +210,7 @@ async function getCountInRange(startDate, endDate) {
   snap.forEach(doc => {
     const date = doc.data().date;
     if (date >= startDate && date <= endDate) {
-      total += doc.data().count || 0;
+      total += (doc.data().count || 0);
     }
   });
   return total;
@@ -374,6 +375,13 @@ async function updateSankalp() {
 addJaapBtn.addEventListener('click', () => openModal(addJaapModal));
 addMalaBtn.addEventListener('click', () => openModal(addMalaModal));
 startSessionBtn.addEventListener('click', () => openModal(sessionModal));
+refreshBtn.addEventListener('click', () => {
+  refreshBtn.style.animation = 'spin 0.6s linear';
+  refreshUI().then(() => {
+    refreshBtn.style.animation = '';
+    showToast('Data refreshed');
+  });
+});
 settingsBtn.addEventListener('click', () => openModal(settingsModal));
 
 document.querySelectorAll('.modal-close').forEach(btn => {

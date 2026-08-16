@@ -62,32 +62,38 @@ html, body {
   50% { opacity: 1; transform: scale(1.2); }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .login-card {
   background: var(--bg-card);
   border-radius: var(--radius);
-  padding: 48px 32px;
+  padding: 24px 20px 48px;
   box-shadow: var(--shadow);
-  max-width: 380px;
+  max-width: 420px;
   width: 100%;
+  max-height: none;
+  overflow: visible;
 }
 
 .login-image {
   width: 100%;
-  max-width: 300px;
-  height: 300px;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
   border-radius: 12px;
-  margin: 0 auto 24px;
+  margin: -24px -20px 24px -20px;
   display: block;
   box-shadow: var(--shadow);
 }
 
 .hero-image {
   width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 16px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: block;
 }
 
 .app-title {
@@ -239,10 +245,11 @@ html, body {
 .hero-card {
   background: linear-gradient(160deg, #fff 0%, var(--saffron-light) 140%);
   border-radius: var(--radius);
-  padding: 32px 20px;
+  padding: 20px 16px;
   text-align: center;
   box-shadow: var(--shadow);
   margin-bottom: 16px;
+  overflow: hidden;
 }
 .hero-label {
   font-size: 12px;

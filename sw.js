@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ramnaam-v1';
+const CACHE_NAME = 'ramnaam-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const urlsToCache = [
   '/js/firebase-config.js',
   '/js/indian-numbers.js',
   '/manifest.json',
+  '/images/rama.jpg',
 ];
 
 self.addEventListener('install', e => {
