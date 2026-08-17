@@ -227,7 +227,24 @@ async function addJaapEntry(count, date, notes = '') {
 // ============================================================
 // STATS -- single shared fetch reused by every calculation below,
 // instead of each one separately re-querying all of a user's entries.
+// Bounded to the last RECENT_WINDOW_DAYS via the userId+date composite
+// index, so read cost no longer grows with a user's total history --
+// only with how much they've logged in the recent window.
 // ============================================================
+const RECENT_WINDOW_DAYS = 400;
+
+async function fetchRecentEntries() {
+  const q = query(
+    collection(db, 'jaapEntries'),
+    where('userId', '==', currentUser.uid),
+    where('date', '>=', getDateBefore(RECENT_WINDOW_DAYS))
+  );
+  const snap = await getDocs(q);
+  const entries = [];
+  snap.forEach(doc => entries.push({ id: doc.id, ...doc.data() }));
+  return entries;
+}
+
 async function fetchAllEntries() {
   const q = query(collection(db, 'jaapEntries'), where('userId', '==', currentUser.uid));
   const snap = await getDocs(q);
@@ -238,11 +255,12 @@ async function fetchAllEntries() {
 
 // userData.lifetimeTotal is maintained incrementally on every add/edit/delete
 // so the lifetime count doesn't need to re-sum the full entry history each
-// refresh. The first time this runs for an existing user, it backfills the
-// total once from the full entry list already fetched for this refresh.
-async function ensureLifetimeTotal(entries) {
+// refresh. The first time this runs for an existing user, it does one full
+// (unbounded) fetch to backfill the total -- a one-time cost, not repeated.
+async function ensureLifetimeTotal() {
   if (userData.lifetimeTotal === undefined || userData.lifetimeTotal === null) {
-    userData.lifetimeTotal = entries.reduce((sum, e) => sum + (e.count || 0), 0);
+    const allEntries = await fetchAllEntries();
+    userData.lifetimeTotal = allEntries.reduce((sum, e) => sum + (e.count || 0), 0);
     await saveUserData();
   }
 }
@@ -279,8 +297,8 @@ function calcStreak(entries) {
 // ============================================================
 async function refreshUI() {
   try {
-    const entries = await fetchAllEntries();
-    await ensureLifetimeTotal(entries);
+    await ensureLifetimeTotal();
+    const entries = await fetchRecentEntries();
 
     const lifetime = (userData.startingCount || 0) + (userData.lifetimeTotal || 0);
     const todayStr = getTodayStr();
