@@ -209,76 +209,52 @@ async function saveUserData() {
 }
 
 async function addJaapEntry(count, date, notes = '') {
+  const safeCount = Math.max(0, Math.round(count));
   const entry = {
     userId: currentUser.uid,
-    count: Math.max(0, Math.round(count)),
+    count: safeCount,
     date: new Date(date).toISOString().split('T')[0],
     notes,
     createdAt: Timestamp.now(),
   };
   await addDoc(collection(db, 'jaapEntries'), entry);
+  userData.lifetimeTotal = (userData.lifetimeTotal || 0) + safeCount;
+  await saveUserData();
   refreshUI();
   showToast('Jaap entry saved');
 }
 
-async function getLifetimeCount() {
+// ============================================================
+// STATS -- single shared fetch reused by every calculation below,
+// instead of each one separately re-querying all of a user's entries.
+// ============================================================
+async function fetchAllEntries() {
   const q = query(collection(db, 'jaapEntries'), where('userId', '==', currentUser.uid));
   const snap = await getDocs(q);
-  let total = userData.startingCount || 0;
-  snap.forEach(doc => {
-    total += doc.data().count || 0;
-  });
-  return total;
+  const entries = [];
+  snap.forEach(doc => entries.push({ id: doc.id, ...doc.data() }));
+  return entries;
 }
 
-async function getTodayCount() {
-  const today = getTodayStr();
-  console.log('Today date:', today);
-  const q = query(
-    collection(db, 'jaapEntries'),
-    where('userId', '==', currentUser.uid),
-  );
-  const snap = await getDocs(q);
-  let total = 0;
-  snap.forEach(doc => {
-    const date = doc.data().date;
-    console.log('Entry date:', date, 'count:', doc.data().count);
-    if (date === today) {
-      total += doc.data().count || 0;
-    }
-  });
-  console.log('Today total:', total);
-  return total;
+// userData.lifetimeTotal is maintained incrementally on every add/edit/delete
+// so the lifetime count doesn't need to re-sum the full entry history each
+// refresh. The first time this runs for an existing user, it backfills the
+// total once from the full entry list already fetched for this refresh.
+async function ensureLifetimeTotal(entries) {
+  if (userData.lifetimeTotal === undefined || userData.lifetimeTotal === null) {
+    userData.lifetimeTotal = entries.reduce((sum, e) => sum + (e.count || 0), 0);
+    await saveUserData();
+  }
 }
 
-async function getCountInRange(startDate, endDate) {
-  const q = query(
-    collection(db, 'jaapEntries'),
-    where('userId', '==', currentUser.uid),
-  );
-  const snap = await getDocs(q);
-  let total = 0;
-  console.log('Range query:', startDate, 'to', endDate);
-  snap.forEach(doc => {
-    const date = doc.data().date;
-    console.log('Checking:', date, 'in range?', date >= startDate && date <= endDate);
-    if (date >= startDate && date <= endDate) {
-      total += (doc.data().count || 0);
-    }
-  });
-  console.log('Range total:', total);
-  return total;
+function calcRangeCount(entries, startDate, endDate) {
+  return entries.reduce((sum, e) => {
+    return (e.date >= startDate && e.date <= endDate) ? sum + (e.count || 0) : sum;
+  }, 0);
 }
 
-async function getStreak() {
-  const q = query(
-    collection(db, 'jaapEntries'),
-    where('userId', '==', currentUser.uid),
-  );
-  const snap = await getDocs(q);
-  const datesSet = new Set();
-  snap.forEach(doc => datesSet.add(doc.data().date));
-
+function calcStreak(entries) {
+  const datesSet = new Set(entries.map(e => e.date));
   if (datesSet.size === 0) return 0;
 
   const sortedDates = Array.from(datesSet).sort().reverse();
@@ -303,17 +279,21 @@ async function getStreak() {
 // ============================================================
 async function refreshUI() {
   try {
-    const lifetime = await getLifetimeCount();
-    const today = await getTodayCount();
-    const week = await getCountInRange(getDateBefore(7), getTodayStr());
-    const month = await getCountInRange(getDateBefore(30), getTodayStr());
-    const year = await getCountInRange(getDateBefore(365), getTodayStr());
-    const streak = await getStreak();
+    const entries = await fetchAllEntries();
+    await ensureLifetimeTotal(entries);
+
+    const lifetime = (userData.startingCount || 0) + (userData.lifetimeTotal || 0);
+    const todayStr = getTodayStr();
+    const today = calcRangeCount(entries, todayStr, todayStr);
+    const week = calcRangeCount(entries, getDateBefore(7), todayStr);
+    const month = calcRangeCount(entries, getDateBefore(30), todayStr);
+    const year = calcRangeCount(entries, getDateBefore(365), todayStr);
+    const streak = calcStreak(entries);
 
     updateDashboard(lifetime, today, week, month, year, streak);
     updateMilestones(lifetime);
-    updateHistory();
-    updateSankalp(lifetime, today);
+    updateHistoryFromEntries(entries);
+    updateSankalp(lifetime, today, week);
   } catch (err) {
     console.error('Error refreshing UI:', err);
     updateDashboard(0, 0, 0, 0, 0, 0);
@@ -416,10 +396,7 @@ function renderMilestoneEditor() {
 }
 
 async function refreshAfterMilestoneChange() {
-  const lifetime = await getLifetimeCount();
-  const today = await getTodayCount();
-  updateMilestones(lifetime);
-  updateSankalp(lifetime, today);
+  await refreshUI();
 }
 
 window.removeMilestone = async function(target) {
@@ -467,27 +444,25 @@ document.getElementById('resetMilestonesBtn').addEventListener('click', async ()
 });
 
 let currentEditId = null;
+let currentEditOldCount = 0;
 
 // Edit entry functions - must be global
 window.editEntry = function(id, count, date) {
   currentEditId = id;
+  currentEditOldCount = count;
   document.getElementById('editCountInput').value = count;
   document.getElementById('editDateInput').value = date;
   openModal(document.getElementById('editEntryModal'));
 };
 
-async function updateHistory() {
-  const q = query(collection(db, 'jaapEntries'), where('userId', '==', currentUser.uid));
-  const snap = await getDocs(q);
-  const entries = [];
-  snap.forEach(doc => entries.push({ id: doc.id, ...doc.data() }));
-  entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+function updateHistoryFromEntries(entries) {
+  const sorted = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const historyList = document.getElementById('historyList');
-  if (entries.length === 0) {
+  if (sorted.length === 0) {
     historyList.innerHTML = '<div class="empty-state">No entries yet. Add your first Jaap.</div>';
   } else {
-    historyList.innerHTML = entries.slice(0, 50).map(e => `
+    historyList.innerHTML = sorted.slice(0, 50).map(e => `
       <div class="history-item" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="editEntry('${e.id}', ${e.count}, '${e.date}')">
         <div>
           <div class="history-date">${e.date}</div>
@@ -508,6 +483,8 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
   if (newCount > 0) {
     const ref = doc(db, 'jaapEntries', currentEditId);
     await updateDoc(ref, { count: newCount, date: newDate });
+    userData.lifetimeTotal = (userData.lifetimeTotal || 0) + (newCount - currentEditOldCount);
+    await saveUserData();
     closeAllModals();
     refreshUI();
     showToast('Entry updated');
@@ -518,6 +495,8 @@ document.getElementById('deleteEntryBtn').addEventListener('click', async () => 
   if (!currentEditId) return;
   if (confirm('Delete this entry?')) {
     await deleteDoc(doc(db, 'jaapEntries', currentEditId));
+    userData.lifetimeTotal = Math.max(0, (userData.lifetimeTotal || 0) - currentEditOldCount);
+    await saveUserData();
     closeAllModals();
     refreshUI();
     showToast('Entry deleted');
@@ -552,10 +531,7 @@ document.getElementById('saveSankalpBtn').addEventListener('click', async () => 
   userData.sankalp = { target, targetDate };
   await saveUserData();
   showToast('Sankalp saved');
-
-  const lifetime = await getLifetimeCount();
-  const today = await getTodayCount();
-  renderSankalpProgress(lifetime, today);
+  refreshUI();
 });
 
 document.getElementById('resetSankalpBtn').addEventListener('click', async () => {
@@ -588,7 +564,7 @@ function updateProjection(lifetime, dailyPace) {
   }).join('');
 }
 
-async function updateSankalp(lifetime, today) {
+function updateSankalp(lifetime, today, week) {
   const select = document.getElementById('sankalpTargetSelect');
   const customWrap = document.getElementById('sankalpCustomWrap');
   const customInput = document.getElementById('sankalpCustomInput');
@@ -612,8 +588,7 @@ async function updateSankalp(lifetime, today) {
     customWrap.classList.add('hidden');
   }
 
-  const dailyPace = await getCountInRange(getDateBefore(7), getTodayStr());
-  const avgPace = Math.round(dailyPace / 7);
+  const avgPace = Math.round(week / 7);
   document.getElementById('projectionPace').textContent =
     `${formatIndianNumber(avgPace)} Jaap/day (based on last 7 days)`;
   updateProjection(lifetime, avgPace);
