@@ -422,7 +422,10 @@ async function updateSankalp() {
 // ============================================================
 addJaapBtn.addEventListener('click', () => openModal(addJaapModal));
 addMalaBtn.addEventListener('click', () => openModal(addMalaModal));
-startSessionBtn.addEventListener('click', () => openModal(sessionModal));
+startSessionBtn.addEventListener('click', () => {
+  openModal(sessionModal);
+  startSessionTimer();
+});
 refreshBtn.addEventListener('click', () => {
   refreshBtn.style.animation = 'spin 0.6s linear';
   refreshUI().then(() => {
@@ -522,6 +525,7 @@ document.getElementById('sessionPauseBtn').addEventListener('click', () => {
 
 document.getElementById('sessionCompleteBtn').addEventListener('click', async () => {
   clearInterval(sessionInterval);
+  sessionActive = false;
   if (sessionCount > 0) {
     await addJaapEntry(sessionCount, getTodayStr(), `Session: ${formatTime(sessionTimer)}`);
   }
@@ -532,6 +536,18 @@ document.getElementById('sessionCompleteBtn').addEventListener('click', async ()
   document.getElementById('sessionPauseBtn').textContent = 'Pause';
   closeAllModals();
 });
+
+function startSessionTimer() {
+  clearInterval(sessionInterval);
+  sessionCount = 0;
+  sessionTimer = 0;
+  document.getElementById('sessionCount').textContent = '0';
+  document.getElementById('sessionTimer').textContent = '00:00:00';
+  document.getElementById('sessionPauseBtn').textContent = 'Pause';
+  sessionStartTime = Date.now();
+  sessionInterval = setInterval(updateSessionTimer, 100);
+  sessionActive = true;
+}
 
 function updateSessionTimer() {
   sessionTimer = Math.floor((Date.now() - sessionStartTime) / 1000);
