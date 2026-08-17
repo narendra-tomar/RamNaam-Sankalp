@@ -269,7 +269,7 @@ async function refreshUI() {
     updateDashboard(lifetime, today, week, month, year, streak);
     updateMilestones(lifetime);
     updateHistory();
-    updateSankalp();
+    updateSankalp(lifetime, today);
   } catch (err) {
     console.error('Error refreshing UI:', err);
     updateDashboard(0, 0, 0, 0, 0, 0);
@@ -389,6 +389,40 @@ document.getElementById('deleteEntryBtn').addEventListener('click', async () => 
   }
 });
 
+document.getElementById('sankalpTargetSelect').addEventListener('change', (e) => {
+  const customWrap = document.getElementById('sankalpCustomWrap');
+  if (e.target.value === 'custom') {
+    customWrap.classList.remove('hidden');
+  } else {
+    customWrap.classList.add('hidden');
+  }
+});
+
+document.getElementById('saveSankalpBtn').addEventListener('click', async () => {
+  const select = document.getElementById('sankalpTargetSelect');
+  const targetDate = document.getElementById('sankalpTargetDate').value;
+  const target = select.value === 'custom'
+    ? parseInt(document.getElementById('sankalpCustomInput').value) || 0
+    : parseInt(select.value) || 0;
+
+  if (target <= 0) {
+    showToast('Enter a valid target');
+    return;
+  }
+  if (!targetDate) {
+    showToast('Pick a target date');
+    return;
+  }
+
+  userData.sankalp = { target, targetDate };
+  await saveUserData();
+  showToast('Sankalp saved');
+
+  const lifetime = await getLifetimeCount();
+  const today = await getTodayCount();
+  renderSankalpProgress(lifetime, today);
+});
+
 function updateProjection(lifetime, dailyPace) {
   const tbody = document.getElementById('projectionTableBody');
   const paces = [10000, 25000, 50000, 100000, 200000, 500000, 1000000];
@@ -407,14 +441,71 @@ function updateProjection(lifetime, dailyPace) {
   }).join('');
 }
 
-async function updateSankalp() {
+async function updateSankalp(lifetime, today) {
   const select = document.getElementById('sankalpTargetSelect');
-  select.innerHTML = MILESTONES.map(m => `<option value="${m.target}">${m.label}</option>`).join('');
-  document.getElementById('sankalpTargetDate').valueAsDate = new Date();
+  const customWrap = document.getElementById('sankalpCustomWrap');
+  const customInput = document.getElementById('sankalpCustomInput');
+  select.innerHTML = MILESTONES.map(m => `<option value="${m.target}">${m.label}</option>`).join('')
+    + `<option value="custom">Custom Target</option>`;
 
-  const lifetime = await getLifetimeCount();
+  const saved = userData && userData.sankalp;
+  if (saved) {
+    const isPreset = MILESTONES.some(m => m.target === saved.target);
+    if (isPreset) {
+      select.value = String(saved.target);
+      customWrap.classList.add('hidden');
+    } else {
+      select.value = 'custom';
+      customInput.value = saved.target;
+      customWrap.classList.remove('hidden');
+    }
+    document.getElementById('sankalpTargetDate').value = saved.targetDate;
+  } else {
+    document.getElementById('sankalpTargetDate').valueAsDate = new Date();
+    customWrap.classList.add('hidden');
+  }
+
   const dailyPace = await getCountInRange(getDateBefore(7), getTodayStr());
-  updateProjection(lifetime, Math.round(dailyPace / 7));
+  const avgPace = Math.round(dailyPace / 7);
+  document.getElementById('projectionPace').textContent =
+    `${formatIndianNumber(avgPace)} Jaap/day (based on last 7 days)`;
+  updateProjection(lifetime, avgPace);
+
+  renderSankalpProgress(lifetime, today);
+}
+
+function renderSankalpProgress(lifetime, today) {
+  const resultCard = document.getElementById('sankalpResult');
+  const saved = userData && userData.sankalp;
+  if (!saved) {
+    resultCard.classList.add('hidden');
+    return;
+  }
+
+  const remaining = Math.max(0, saved.target - lifetime);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysRemaining = Math.max(0, Math.ceil((new Date(saved.targetDate) - new Date(getTodayStr())) / msPerDay));
+  const requiredAvg = daysRemaining > 0 ? Math.ceil(remaining / daysRemaining) : remaining;
+  const aheadBehind = today - requiredAvg;
+
+  document.getElementById('sankalpRemaining').textContent = formatIndianNumber(remaining);
+  document.getElementById('sankalpDays').textContent = daysRemaining;
+  document.getElementById('sankalpRequired').textContent = formatIndianNumber(requiredAvg) + '/day';
+  document.getElementById('sankalpTodayTarget').textContent = formatIndianNumber(requiredAvg);
+
+  const aheadBehindEl = document.getElementById('sankalpAheadBehind');
+  if (remaining === 0) {
+    aheadBehindEl.textContent = 'Completed! 🎉';
+    aheadBehindEl.style.color = 'var(--success)';
+  } else if (aheadBehind >= 0) {
+    aheadBehindEl.textContent = `+${formatIndianNumber(aheadBehind)} ahead`;
+    aheadBehindEl.style.color = 'var(--success)';
+  } else {
+    aheadBehindEl.textContent = `${formatIndianNumber(Math.abs(aheadBehind))} behind`;
+    aheadBehindEl.style.color = '#c0392b';
+  }
+
+  resultCard.classList.remove('hidden');
 }
 
 // ============================================================
