@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.email == 'narendra.tomar.official@gmail.com';
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId || isSuperAdmin();
+    }
+    match /jaapEntries/{doc=**} {
+      allow read, write: if request.auth.uid == resource.data.userId || isSuperAdmin();
+      allow create: if request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
