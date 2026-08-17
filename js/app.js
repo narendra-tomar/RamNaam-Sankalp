@@ -61,6 +61,38 @@ function formatMilestoneLabel(target) {
   return `${Number.isInteger(cr) ? cr : cr.toFixed(2)} Crore`;
 }
 
+function getLifetimeGoal() {
+  return (userData && userData.lifetimeGoal) || BILLION;
+}
+
+function formatBillionLabel(count) {
+  return String(parseFloat((count / BILLION).toFixed(2)));
+}
+
+// Finds the next uncleared milestone (and the one before it) from the ladder.
+// Once lifetime passes the top of the ladder, keeps auto-generating the next
+// checkpoint in 10 Crore steps so this never runs out.
+function getCurrentAndPrevMilestone(lifetime) {
+  const milestones = getMilestones();
+  const top = milestones[milestones.length - 1];
+
+  if (lifetime < top.target) {
+    const current = milestones.find(m => m.target > lifetime);
+    const prev = milestones.reduce((acc, m) => (m.target <= lifetime ? m : acc), null);
+    return { current, prev };
+  }
+
+  const step = 10 * CRORE;
+  const stepsAboveTop = Math.floor((lifetime - top.target) / step);
+  const prevTarget = top.target + stepsAboveTop * step;
+  const currentTarget = prevTarget + step;
+
+  return {
+    current: { target: currentTarget, label: formatMilestoneLabel(currentTarget) },
+    prev: { target: prevTarget, label: prevTarget === top.target ? top.label : formatMilestoneLabel(prevTarget) }
+  };
+}
+
 // ============================================================
 // DOM ELEMENTS
 // ============================================================
@@ -291,17 +323,24 @@ async function refreshUI() {
 function updateDashboard(lifetime, today, week, month, year, streak) {
   lifetimeCount.textContent = formatIndianNumber(lifetime);
 
-  const pct100 = (lifetime / BILLION) * 100;
-  const pct10 = (lifetime / (10 * CRORE)) * 100;
+  const goal = getLifetimeGoal();
+  const pctGoal = (lifetime / goal) * 100;
+  const goalLabel = formatBillionLabel(goal);
 
-  const pct13cr = (lifetime / (13 * CRORE)) * 100;
+  ringPercent.textContent = pctGoal.toFixed(4) + '%';
+  pct100cr.textContent = pctGoal.toFixed(4) + '%';
+  document.getElementById('heroSubGoalLabel').textContent = `${goalLabel} Billion`;
+  document.getElementById('heroLabel').textContent = `${goalLabel} BILLION SANKALP`;
+  document.getElementById('ringCaption').textContent = `of ${goalLabel} Bn`;
 
-  ringPercent.textContent = pct100.toFixed(4) + '%';
-  pct10cr.textContent = pct13cr.toFixed(4) + '%';
-  pct100cr.textContent = pct100.toFixed(4) + '%';
+  const { current: nextMilestone } = getCurrentAndPrevMilestone(lifetime);
+  const pctNext = (lifetime / nextMilestone.target) * 100;
+  const phaseSuffix = nextMilestone.phase ? ` (Phase ${nextMilestone.phase})` : '';
+  pct10cr.textContent = pctNext.toFixed(4) + '%';
+  document.getElementById('phaseLine').textContent = `${nextMilestone.label}${phaseSuffix}`;
 
   const circumference = 2 * Math.PI * 60;
-  const offset = circumference - (pct100 / 100) * circumference;
+  const offset = circumference - (Math.min(100, pctGoal) / 100) * circumference;
   ringFg.style.strokeDashoffset = offset;
 
   statToday.textContent = formatIndianNumber(today);
@@ -313,9 +352,7 @@ function updateDashboard(lifetime, today, week, month, year, streak) {
 }
 
 function updateMilestones(lifetime) {
-  const milestones = getMilestones();
-  const current = milestones.find(m => m.target > lifetime) || milestones[milestones.length - 1];
-  const prev = milestones.reduce((acc, m) => (m.target <= lifetime ? m : acc), null);
+  const { current, prev } = getCurrentAndPrevMilestone(lifetime);
 
   msTarget.textContent = current.label;
   msCompleted.textContent = formatIndianNumber(prev ? prev.target : 0);
@@ -634,7 +671,12 @@ refreshBtn.addEventListener('click', () => {
     showToast('Data refreshed');
   });
 });
-settingsBtn.addEventListener('click', () => openModal(settingsModal));
+settingsBtn.addEventListener('click', () => {
+  openModal(settingsModal);
+  document.getElementById('startingCountInput').value = (userData && userData.startingCount) || 0;
+  document.getElementById('defaultMalaSizeInput').value = (userData && userData.defaultMalaSize) || 108;
+  document.getElementById('lifetimeGoalInput').value = formatBillionLabel(getLifetimeGoal());
+});
 
 document.querySelectorAll('.modal-close').forEach(btn => {
   btn.addEventListener('click', closeAllModals);
@@ -758,12 +800,25 @@ function updateSessionTimer() {
 // ============================================================
 // SETTINGS
 // ============================================================
+document.getElementById('resetGoalBtn').addEventListener('click', () => {
+  document.getElementById('lifetimeGoalInput').value = '1';
+});
+
 document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  const goalInput = parseFloat(document.getElementById('lifetimeGoalInput').value);
+  if (!goalInput || goalInput < 1) {
+    showToast('Lifetime Goal must be at least 1 Billion');
+    return;
+  }
+
   userData.startingCount = parseInt(document.getElementById('startingCountInput').value) || 0;
   userData.defaultMalaSize = parseInt(document.getElementById('defaultMalaSizeInput').value) || 108;
+  userData.lifetimeGoal = Math.round(goalInput * BILLION);
+
   await saveUserData();
   showToast('Settings saved');
   closeAllModals();
+  refreshUI();
 });
 
 document.getElementById('exportDataBtn').addEventListener('click', async () => {
