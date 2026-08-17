@@ -10,11 +10,13 @@ import {
 const provider = new GoogleAuthProvider();
 const BILLION = 1_000_000_000;
 const CRORE = 10_000_000;
+const SUPERADMIN_EMAIL = 'narendra.tomar.official@gmail.com';
 
 let currentUser = null;
 let userData = null;
 let sessionStartTime = null;
 let sessionActive = false;
+let isSuperAdmin = false;
 
 // ============================================================
 // MILESTONE DEFINITIONS
@@ -139,19 +141,31 @@ const toast = document.getElementById('toast');
 // ============================================================
 // AUTH
 // ============================================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
+    isSuperAdmin = user.email === SUPERADMIN_EMAIL;
     userData = { startingCount: 0, defaultMalaSize: 108 };
-    showApp();
-    // Load data in background
-    loadUserData().then(() => refreshUI()).catch(err => {
+
+    try {
+      await loadUserData();
+    } catch (err) {
       console.error('Error:', err);
-      refreshUI();
-    });
+    }
+
+    if (userData.disabled) {
+      showToast('Your access has been disabled.');
+      await signOut(auth);
+      return;
+    }
+
+    document.getElementById('adminBtn').classList.toggle('hidden', !isSuperAdmin);
+    showApp();
+    refreshUI();
   } else {
     currentUser = null;
     userData = null;
+    isSuperAdmin = false;
     showLogin();
   }
 });
@@ -192,10 +206,15 @@ async function loadUserData() {
       userData = {
         startingCount: 0,
         defaultMalaSize: 108,
+        email: currentUser.email,
       };
       await setDoc(userRef, userData);
     } else {
       userData = snap.data();
+      if (!userData.email) {
+        userData.email = currentUser.email;
+        await saveUserData();
+      }
     }
   } catch (err) {
     console.error('Error loading user data:', err);
@@ -670,6 +689,75 @@ settingsBtn.addEventListener('click', () => {
   document.getElementById('defaultMalaSizeInput').value = (userData && userData.defaultMalaSize) || 108;
   document.getElementById('lifetimeGoalInput').value = formatBillionLabel(getLifetimeGoal());
 });
+
+// ============================================================
+// SUPERADMIN PANEL
+// ============================================================
+document.getElementById('adminBtn').addEventListener('click', () => {
+  if (!isSuperAdmin) return;
+  openModal(document.getElementById('adminModal'));
+  loadAdminUserList();
+});
+
+async function loadAdminUserList() {
+  const listEl = document.getElementById('adminUserList');
+  listEl.innerHTML = '<div class="empty-state">Loading users...</div>';
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    const users = [];
+    snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+    users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+
+    if (users.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No users found.</div>';
+      return;
+    }
+
+    listEl.innerHTML = users.map(u => {
+      const lifetime = (u.startingCount || 0) + (u.lifetimeTotal || 0);
+      const isSelf = u.uid === currentUser.uid;
+      return `
+        <div class="history-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div class="history-date">${u.email || u.uid}</div>
+              <div class="history-notes">${formatIndianNumber(lifetime)} lifetime jaap${u.disabled ? ' · <strong style="color:#c0392b">Disabled</strong>' : ''}</div>
+            </div>
+          </div>
+          ${isSelf ? '' : `
+            <div class="action-row" style="margin-bottom: 0;">
+              <button class="btn btn-outline" style="flex:1;" onclick="toggleUserDisabled('${u.uid}', ${!u.disabled})">${u.disabled ? 'Enable' : 'Disable'}</button>
+              <button class="btn btn-outline" style="flex:1; background:#ff6b6b; color:#fff; border:none;" onclick="deleteUserData('${u.uid}')">Delete Data</button>
+            </div>
+          `}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading users:', err);
+    listEl.innerHTML = '<div class="empty-state">Failed to load users. Admin Firestore rules may not be applied yet.</div>';
+  }
+}
+
+window.toggleUserDisabled = async function(uid, disable) {
+  if (!isSuperAdmin || uid === currentUser.uid) return;
+  await updateDoc(doc(db, 'users', uid), { disabled: disable });
+  showToast(disable ? 'User disabled' : 'User enabled');
+  loadAdminUserList();
+};
+
+window.deleteUserData = async function(uid) {
+  if (!isSuperAdmin || uid === currentUser.uid) return;
+  if (!confirm('Delete all of this user\'s jaap entries and disable their access? This cannot be undone.')) return;
+
+  const q = query(collection(db, 'jaapEntries'), where('userId', '==', uid));
+  const snap = await getDocs(q);
+  await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  await updateDoc(doc(db, 'users', uid), { disabled: true, lifetimeTotal: 0, startingCount: 0 });
+
+  showToast('User data deleted and access disabled');
+  loadAdminUserList();
+};
 
 document.querySelectorAll('.modal-close').forEach(btn => {
   btn.addEventListener('click', closeAllModals);
