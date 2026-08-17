@@ -697,9 +697,16 @@ const ADMIN_PAGE_SIZE = 10;
 let adminUsersCache = [];
 let adminCurrentPage = 1;
 let adminSelectedUids = new Set();
+let adminSearchTerm = '';
 
 document.getElementById('adminTabBtn').addEventListener('click', () => {
   loadAdminUserList();
+});
+
+document.getElementById('adminSearchInput').addEventListener('input', (e) => {
+  adminSearchTerm = e.target.value.trim().toLowerCase();
+  adminCurrentPage = 1;
+  renderAdminPage();
 });
 
 async function loadAdminUserList() {
@@ -713,6 +720,8 @@ async function loadAdminUserList() {
     adminUsersCache = users;
     adminCurrentPage = 1;
     adminSelectedUids = new Set();
+    adminSearchTerm = '';
+    document.getElementById('adminSearchInput').value = '';
     renderAdminPage();
   } catch (err) {
     console.error('Error loading users:', err);
@@ -720,21 +729,29 @@ async function loadAdminUserList() {
   }
 }
 
+function getFilteredUsers() {
+  if (!adminSearchTerm) return adminUsersCache;
+  return adminUsersCache.filter(u => (u.email || '').toLowerCase().includes(adminSearchTerm));
+}
+
 function getCurrentPageUids() {
   const start = (adminCurrentPage - 1) * ADMIN_PAGE_SIZE;
-  return adminUsersCache.slice(start, start + ADMIN_PAGE_SIZE).map(u => u.uid);
+  return getFilteredUsers().slice(start, start + ADMIN_PAGE_SIZE).map(u => u.uid);
 }
 
 function renderAdminPage() {
   const listEl = document.getElementById('adminUserList');
-  const totalPages = Math.max(1, Math.ceil(adminUsersCache.length / ADMIN_PAGE_SIZE));
+  const filteredUsers = getFilteredUsers();
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ADMIN_PAGE_SIZE));
   adminCurrentPage = Math.min(Math.max(1, adminCurrentPage), totalPages);
 
-  if (adminUsersCache.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">No users found.</div>';
+  if (filteredUsers.length === 0) {
+    listEl.innerHTML = adminSearchTerm
+      ? '<div class="empty-state">No users match that email.</div>'
+      : '<div class="empty-state">No users found.</div>';
   } else {
     const start = (adminCurrentPage - 1) * ADMIN_PAGE_SIZE;
-    const pageUsers = adminUsersCache.slice(start, start + ADMIN_PAGE_SIZE);
+    const pageUsers = filteredUsers.slice(start, start + ADMIN_PAGE_SIZE);
 
     listEl.innerHTML = pageUsers.map(u => {
       const lifetime = (u.startingCount || 0) + (u.lifetimeTotal || 0);
