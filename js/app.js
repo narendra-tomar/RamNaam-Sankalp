@@ -423,6 +423,18 @@ document.getElementById('saveSankalpBtn').addEventListener('click', async () => 
   renderSankalpProgress(lifetime, today);
 });
 
+document.getElementById('resetSankalpBtn').addEventListener('click', async () => {
+  if (!confirm('Reset your Sankalp? This will clear your saved target and date.')) return;
+  userData.sankalp = null;
+  await saveUserData();
+  document.getElementById('sankalpTargetSelect').value = String(MILESTONES[0].target);
+  document.getElementById('sankalpCustomWrap').classList.add('hidden');
+  document.getElementById('sankalpCustomInput').value = '';
+  document.getElementById('sankalpTargetDate').valueAsDate = new Date();
+  document.getElementById('sankalpResult').classList.add('hidden');
+  showToast('Sankalp reset');
+});
+
 function updateProjection(lifetime, dailyPace) {
   const tbody = document.getElementById('projectionTableBody');
   const paces = [10000, 25000, 50000, 100000, 200000, 500000, 1000000];
