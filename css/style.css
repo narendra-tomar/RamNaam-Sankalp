@@ -425,6 +425,40 @@ html, body {
   cursor: not-allowed;
 }
 
+.admin-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.admin-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.admin-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+}
+.admin-bulk-actions .btn {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.admin-select-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 /* ---------- Forms ---------- */
 .field-label {
   display: block;

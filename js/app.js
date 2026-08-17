@@ -696,6 +696,7 @@ settingsBtn.addEventListener('click', () => {
 const ADMIN_PAGE_SIZE = 10;
 let adminUsersCache = [];
 let adminCurrentPage = 1;
+let adminSelectedUids = new Set();
 
 document.getElementById('adminTabBtn').addEventListener('click', () => {
   loadAdminUserList();
@@ -711,11 +712,17 @@ async function loadAdminUserList() {
     users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
     adminUsersCache = users;
     adminCurrentPage = 1;
+    adminSelectedUids = new Set();
     renderAdminPage();
   } catch (err) {
     console.error('Error loading users:', err);
     listEl.innerHTML = '<div class="empty-state">Failed to load users. Admin Firestore rules may not be applied yet.</div>';
   }
+}
+
+function getCurrentPageUids() {
+  const start = (adminCurrentPage - 1) * ADMIN_PAGE_SIZE;
+  return adminUsersCache.slice(start, start + ADMIN_PAGE_SIZE).map(u => u.uid);
 }
 
 function renderAdminPage() {
@@ -732,10 +739,12 @@ function renderAdminPage() {
     listEl.innerHTML = pageUsers.map(u => {
       const lifetime = (u.startingCount || 0) + (u.lifetimeTotal || 0);
       const isSelf = u.uid === currentUser.uid;
+      const checked = adminSelectedUids.has(u.uid) ? 'checked' : '';
       return `
         <div class="history-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            ${isSelf ? '<span style="width:18px;"></span>' : `<input type="checkbox" class="admin-select-checkbox" ${checked} onchange="toggleAdminSelect('${u.uid}', this.checked)">`}
+            <div style="flex: 1;">
               <div class="history-date">${u.email || u.uid}</div>
               <div class="history-notes">${formatIndianNumber(lifetime)} lifetime jaap${u.disabled ? ' · <strong style="color:#c0392b">Disabled</strong>' : ''}</div>
             </div>
@@ -754,7 +763,34 @@ function renderAdminPage() {
   document.getElementById('adminPageIndicator').textContent = `Page ${adminCurrentPage} of ${totalPages}`;
   document.getElementById('adminPrevBtn').disabled = adminCurrentPage <= 1;
   document.getElementById('adminNextBtn').disabled = adminCurrentPage >= totalPages;
+  updateAdminBulkBar();
 }
+
+function updateAdminBulkBar() {
+  const count = adminSelectedUids.size;
+  document.getElementById('adminBulkActions').classList.toggle('hidden', count === 0);
+  document.getElementById('adminSelectedCount').textContent = `${count} selected`;
+
+  const selectableOnPage = getCurrentPageUids().filter(uid => uid !== currentUser.uid);
+  const allSelected = selectableOnPage.length > 0 && selectableOnPage.every(uid => adminSelectedUids.has(uid));
+  document.getElementById('adminSelectAllCheckbox').checked = allSelected;
+}
+
+document.getElementById('adminSelectAllCheckbox').addEventListener('change', (e) => {
+  const selectableOnPage = getCurrentPageUids().filter(uid => uid !== currentUser.uid);
+  if (e.target.checked) {
+    selectableOnPage.forEach(uid => adminSelectedUids.add(uid));
+  } else {
+    selectableOnPage.forEach(uid => adminSelectedUids.delete(uid));
+  }
+  renderAdminPage();
+});
+
+window.toggleAdminSelect = function(uid, checked) {
+  if (checked) adminSelectedUids.add(uid);
+  else adminSelectedUids.delete(uid);
+  updateAdminBulkBar();
+};
 
 document.getElementById('adminPrevBtn').addEventListener('click', () => {
   adminCurrentPage--;
@@ -790,6 +826,45 @@ window.deleteUserData = async function(uid) {
   showToast('User data deleted and access disabled');
   renderAdminPage();
 };
+
+async function bulkSetDisabled(disable) {
+  const uids = Array.from(adminSelectedUids);
+  if (uids.length === 0) return;
+
+  await Promise.all(uids.map(uid => updateDoc(doc(db, 'users', uid), { disabled: disable })));
+  uids.forEach(uid => {
+    const u = adminUsersCache.find(x => x.uid === uid);
+    if (u) u.disabled = disable;
+  });
+
+  showToast(`${uids.length} user(s) ${disable ? 'disabled' : 'enabled'}`);
+  adminSelectedUids.clear();
+  renderAdminPage();
+}
+
+async function bulkDeleteData() {
+  const uids = Array.from(adminSelectedUids);
+  if (uids.length === 0) return;
+  if (!confirm(`Delete all jaap entries for ${uids.length} selected user(s) and disable their access? This cannot be undone.`)) return;
+
+  for (const uid of uids) {
+    const q = query(collection(db, 'jaapEntries'), where('userId', '==', uid));
+    const snap = await getDocs(q);
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    await updateDoc(doc(db, 'users', uid), { disabled: true, lifetimeTotal: 0, startingCount: 0 });
+
+    const u = adminUsersCache.find(x => x.uid === uid);
+    if (u) { u.disabled = true; u.lifetimeTotal = 0; u.startingCount = 0; }
+  }
+
+  showToast(`Data deleted for ${uids.length} user(s)`);
+  adminSelectedUids.clear();
+  renderAdminPage();
+}
+
+document.getElementById('adminBulkDisableBtn').addEventListener('click', () => bulkSetDisabled(true));
+document.getElementById('adminBulkEnableBtn').addEventListener('click', () => bulkSetDisabled(false));
+document.getElementById('adminBulkDeleteBtn').addEventListener('click', () => bulkDeleteData());
 
 document.querySelectorAll('.modal-close').forEach(btn => {
   btn.addEventListener('click', closeAllModals);

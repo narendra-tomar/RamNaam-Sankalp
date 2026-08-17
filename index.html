@@ -210,6 +210,18 @@
     <section id="tab-admin" class="tab-panel">
       <div class="card">
         <div class="card-heading">All Users</div>
+        <div class="admin-bulk-bar">
+          <label class="admin-select-all">
+            <input type="checkbox" id="adminSelectAllCheckbox">
+            <span>Select all on page</span>
+          </label>
+          <div id="adminBulkActions" class="admin-bulk-actions hidden">
+            <span id="adminSelectedCount">0 selected</span>
+            <button id="adminBulkDisableBtn" class="btn btn-outline">Disable</button>
+            <button id="adminBulkEnableBtn" class="btn btn-outline">Enable</button>
+            <button id="adminBulkDeleteBtn" class="btn btn-outline" style="background:#ff6b6b; color:#fff; border:none;">Delete Data</button>
+          </div>
+        </div>
         <div id="adminUserList" class="history-list"></div>
         <div class="admin-pagination">
           <button id="adminPrevBtn" class="btn btn-outline" disabled>‹ Prev</button>
