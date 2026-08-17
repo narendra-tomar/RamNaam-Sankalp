@@ -159,7 +159,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    document.getElementById('adminBtn').classList.toggle('hidden', !isSuperAdmin);
+    document.getElementById('adminTabBtn').classList.toggle('hidden', !isSuperAdmin);
     showApp();
     refreshUI();
   } else {
@@ -693,9 +693,11 @@ settingsBtn.addEventListener('click', () => {
 // ============================================================
 // SUPERADMIN PANEL
 // ============================================================
-document.getElementById('adminBtn').addEventListener('click', () => {
-  if (!isSuperAdmin) return;
-  openModal(document.getElementById('adminModal'));
+const ADMIN_PAGE_SIZE = 10;
+let adminUsersCache = [];
+let adminCurrentPage = 1;
+
+document.getElementById('adminTabBtn').addEventListener('click', () => {
   loadAdminUserList();
 });
 
@@ -707,13 +709,27 @@ async function loadAdminUserList() {
     const users = [];
     snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
     users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+    adminUsersCache = users;
+    adminCurrentPage = 1;
+    renderAdminPage();
+  } catch (err) {
+    console.error('Error loading users:', err);
+    listEl.innerHTML = '<div class="empty-state">Failed to load users. Admin Firestore rules may not be applied yet.</div>';
+  }
+}
 
-    if (users.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No users found.</div>';
-      return;
-    }
+function renderAdminPage() {
+  const listEl = document.getElementById('adminUserList');
+  const totalPages = Math.max(1, Math.ceil(adminUsersCache.length / ADMIN_PAGE_SIZE));
+  adminCurrentPage = Math.min(Math.max(1, adminCurrentPage), totalPages);
 
-    listEl.innerHTML = users.map(u => {
+  if (adminUsersCache.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">No users found.</div>';
+  } else {
+    const start = (adminCurrentPage - 1) * ADMIN_PAGE_SIZE;
+    const pageUsers = adminUsersCache.slice(start, start + ADMIN_PAGE_SIZE);
+
+    listEl.innerHTML = pageUsers.map(u => {
       const lifetime = (u.startingCount || 0) + (u.lifetimeTotal || 0);
       const isSelf = u.uid === currentUser.uid;
       return `
@@ -733,17 +749,30 @@ async function loadAdminUserList() {
         </div>
       `;
     }).join('');
-  } catch (err) {
-    console.error('Error loading users:', err);
-    listEl.innerHTML = '<div class="empty-state">Failed to load users. Admin Firestore rules may not be applied yet.</div>';
   }
+
+  document.getElementById('adminPageIndicator').textContent = `Page ${adminCurrentPage} of ${totalPages}`;
+  document.getElementById('adminPrevBtn').disabled = adminCurrentPage <= 1;
+  document.getElementById('adminNextBtn').disabled = adminCurrentPage >= totalPages;
 }
+
+document.getElementById('adminPrevBtn').addEventListener('click', () => {
+  adminCurrentPage--;
+  renderAdminPage();
+});
+
+document.getElementById('adminNextBtn').addEventListener('click', () => {
+  adminCurrentPage++;
+  renderAdminPage();
+});
 
 window.toggleUserDisabled = async function(uid, disable) {
   if (!isSuperAdmin || uid === currentUser.uid) return;
   await updateDoc(doc(db, 'users', uid), { disabled: disable });
+  const u = adminUsersCache.find(x => x.uid === uid);
+  if (u) u.disabled = disable;
   showToast(disable ? 'User disabled' : 'User enabled');
-  loadAdminUserList();
+  renderAdminPage();
 };
 
 window.deleteUserData = async function(uid) {
@@ -755,8 +784,11 @@ window.deleteUserData = async function(uid) {
   await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
   await updateDoc(doc(db, 'users', uid), { disabled: true, lifetimeTotal: 0, startingCount: 0 });
 
+  const u = adminUsersCache.find(x => x.uid === uid);
+  if (u) { u.disabled = true; u.lifetimeTotal = 0; u.startingCount = 0; }
+
   showToast('User data deleted and access disabled');
-  loadAdminUserList();
+  renderAdminPage();
 };
 
 document.querySelectorAll('.modal-close').forEach(btn => {

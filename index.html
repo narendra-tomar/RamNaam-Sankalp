@@ -47,7 +47,6 @@
     </div>
     <div class="topbar-actions">
       <button id="refreshBtn" class="icon-btn" title="Refresh data" aria-label="Refresh">⟳</button>
-      <button id="adminBtn" class="icon-btn hidden" title="Admin" aria-label="Admin">🛡</button>
       <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
       <button id="signOutBtn" class="icon-btn" title="Sign out" aria-label="Sign out">⏻</button>
     </div>
@@ -58,6 +57,7 @@
     <button class="tab-btn" data-tab="milestones">Milestones</button>
     <button class="tab-btn" data-tab="history">History</button>
     <button class="tab-btn" data-tab="sankalp">Sankalp</button>
+    <button id="adminTabBtn" class="tab-btn hidden" data-tab="admin">Admin</button>
   </nav>
 
   <main class="content">
@@ -206,6 +206,19 @@
       </div>
     </section>
 
+    <!-- ---------- ADMIN TAB (superadmin only) ---------- -->
+    <section id="tab-admin" class="tab-panel">
+      <div class="card">
+        <div class="card-heading">All Users</div>
+        <div id="adminUserList" class="history-list"></div>
+        <div class="admin-pagination">
+          <button id="adminPrevBtn" class="btn btn-outline" disabled>‹ Prev</button>
+          <span id="adminPageIndicator">Page 1 of 1</span>
+          <button id="adminNextBtn" class="btn btn-outline" disabled>Next ›</button>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -263,11 +276,6 @@
     <button id="saveSettingsBtn" class="btn btn-primary btn-full" style="margin-top: 14px;">Save Settings</button>
     <hr class="divider">
     <button id="exportDataBtn" class="btn btn-outline btn-full">Export My Data (JSON)</button>
-  </div>
-
-  <div id="adminModal" class="modal hidden">
-    <div class="modal-header"><span>Admin — All Users</span><button class="modal-close" data-close>&times;</button></div>
-    <div id="adminUserList" class="history-list"></div>
   </div>
 
   <div id="editEntryModal" class="modal hidden">

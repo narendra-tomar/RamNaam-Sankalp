@@ -407,6 +407,24 @@ html, body {
 .history-count { font-weight: 600; font-size: 15px; }
 .empty-state { color: var(--text-secondary); font-size: 14px; text-align: center; padding: 24px 0; }
 
+/* ---------- Admin pagination ---------- */
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.admin-pagination .btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+.admin-pagination .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ---------- Forms ---------- */
 .field-label {
   display: block;
