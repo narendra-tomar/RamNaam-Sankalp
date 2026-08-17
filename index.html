@@ -131,16 +131,33 @@
     <!-- ---------- MILESTONES TAB ---------- -->
     <section id="tab-milestones" class="tab-panel">
       <div class="card">
-        <div class="card-heading">Phase I — Foundation (1–13 Crore)</div>
-        <div id="milestonesPhase1" class="milestone-list"></div>
+        <div class="card-heading">Customize Milestones</div>
+        <div id="milestoneEditList" class="milestone-list"></div>
+        <div class="action-row" style="margin-top: 14px; align-items: center;">
+          <input type="number" id="newMilestoneInput" class="field-input" style="flex: 1;" placeholder="Target in Crore (e.g. 1.5)" min="0.01" step="0.01">
+          <button id="addMilestoneBtn" class="btn btn-secondary" style="flex: 0 0 auto; white-space: nowrap;">+ Add</button>
+        </div>
+        <button id="resetMilestonesBtn" class="btn btn-outline btn-full hidden" style="margin-top: 10px;">Reset to Default Ladder</button>
       </div>
-      <div class="card">
-        <div class="card-heading">Phase II — Expansion (15–50 Crore)</div>
-        <div id="milestonesPhase2" class="milestone-list"></div>
+
+      <div id="milestonesDefaultWrap">
+        <div class="card">
+          <div class="card-heading">Phase I — Foundation (1–13 Crore)</div>
+          <div id="milestonesPhase1" class="milestone-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-heading">Phase II — Expansion (15–50 Crore)</div>
+          <div id="milestonesPhase2" class="milestone-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-heading">Phase III — Maha Sankalp (60–100 Crore)</div>
+          <div id="milestonesPhase3" class="milestone-list"></div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-heading">Phase III — Maha Sankalp (60–100 Crore)</div>
-        <div id="milestonesPhase3" class="milestone-list"></div>
+
+      <div id="milestonesCustomWrap" class="card hidden">
+        <div class="card-heading">Your Milestones</div>
+        <div id="milestonesCustomList" class="milestone-list"></div>
       </div>
     </section>
 

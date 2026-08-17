@@ -19,7 +19,7 @@ let sessionActive = false;
 // ============================================================
 // MILESTONE DEFINITIONS
 // ============================================================
-const MILESTONES = [
+const DEFAULT_MILESTONES = [
   // Phase I
   { target: 1 * CRORE, label: '1 Crore', phase: 1 },
   { target: 2 * CRORE, label: '2 Crore', phase: 1 },
@@ -48,6 +48,18 @@ const MILESTONES = [
   { target: 90 * CRORE, label: '90 Crore', phase: 3 },
   { target: 100 * CRORE, label: '100 Crore (1 Billion)', phase: 3 },
 ];
+
+function getMilestones() {
+  if (userData && userData.customMilestones && userData.customMilestones.length) {
+    return [...userData.customMilestones].sort((a, b) => a.target - b.target);
+  }
+  return DEFAULT_MILESTONES;
+}
+
+function formatMilestoneLabel(target) {
+  const cr = target / CRORE;
+  return `${Number.isInteger(cr) ? cr : cr.toFixed(2)} Crore`;
+}
 
 // ============================================================
 // DOM ELEMENTS
@@ -301,8 +313,9 @@ function updateDashboard(lifetime, today, week, month, year, streak) {
 }
 
 function updateMilestones(lifetime) {
-  const current = MILESTONES.find(m => m.target > lifetime) || MILESTONES[MILESTONES.length - 1];
-  const prev = MILESTONES.find(m => m.target <= lifetime);
+  const milestones = getMilestones();
+  const current = milestones.find(m => m.target > lifetime) || milestones[milestones.length - 1];
+  const prev = milestones.reduce((acc, m) => (m.target <= lifetime ? m : acc), null);
 
   msTarget.textContent = current.label;
   msCompleted.textContent = formatIndianNumber(prev ? prev.target : 0);
@@ -314,14 +327,31 @@ function updateMilestones(lifetime) {
   msBar.style.width = Math.min(100, pctToMilestone) + '%';
 
   renderMilestoneList(lifetime);
+  renderMilestoneEditor();
 }
 
 function renderMilestoneList(lifetime) {
+  const milestones = getMilestones();
+  const isCustom = !!(userData && userData.customMilestones && userData.customMilestones.length);
+
+  document.getElementById('milestonesDefaultWrap').classList.toggle('hidden', isCustom);
+  document.getElementById('milestonesCustomWrap').classList.toggle('hidden', !isCustom);
+
+  if (isCustom) {
+    document.getElementById('milestonesCustomList').innerHTML = milestones.map(m => `
+      <div class="milestone-item ${lifetime >= m.target ? 'completed' : ''}">
+        <span>${m.label}</span>
+        <span class="milestone-check">${lifetime >= m.target ? '✓' : ''}</span>
+      </div>
+    `).join('');
+    return;
+  }
+
   const phases = [1, 2, 3];
   phases.forEach(phase => {
     const selector = `#milestonesPhase${phase}`;
     const container = document.querySelector(selector);
-    const phaseMs = MILESTONES.filter(m => m.phase === phase);
+    const phaseMs = milestones.filter(m => m.phase === phase);
     container.innerHTML = phaseMs.map(m => `
       <div class="milestone-item ${lifetime >= m.target ? 'completed' : ''}">
         <span>${m.label}</span>
@@ -330,6 +360,74 @@ function renderMilestoneList(lifetime) {
     `).join('');
   });
 }
+
+// ============================================================
+// MILESTONE EDITOR (custom ladder)
+// ============================================================
+function renderMilestoneEditor() {
+  const milestones = getMilestones();
+  const isCustom = !!(userData && userData.customMilestones && userData.customMilestones.length);
+
+  document.getElementById('milestoneEditList').innerHTML = milestones.map(m => `
+    <div class="milestone-item">
+      <span>${m.label}</span>
+      <button class="modal-close" style="font-size: 18px;" onclick="removeMilestone(${m.target})">&times;</button>
+    </div>
+  `).join('');
+
+  document.getElementById('resetMilestonesBtn').classList.toggle('hidden', !isCustom);
+}
+
+async function refreshAfterMilestoneChange() {
+  const lifetime = await getLifetimeCount();
+  const today = await getTodayCount();
+  updateMilestones(lifetime);
+  updateSankalp(lifetime, today);
+}
+
+window.removeMilestone = async function(target) {
+  const remaining = getMilestones()
+    .map(m => ({ target: m.target, label: m.label }))
+    .filter(m => m.target !== target);
+  if (remaining.length === 0) {
+    showToast('Keep at least one milestone');
+    return;
+  }
+  userData.customMilestones = remaining;
+  await saveUserData();
+  showToast('Milestone removed');
+  refreshAfterMilestoneChange();
+};
+
+document.getElementById('addMilestoneBtn').addEventListener('click', async () => {
+  const input = document.getElementById('newMilestoneInput');
+  const crValue = parseFloat(input.value);
+  if (!crValue || crValue <= 0) {
+    showToast('Enter a valid Crore value');
+    return;
+  }
+  const target = Math.round(crValue * CRORE);
+  const current = getMilestones().map(m => ({ target: m.target, label: m.label }));
+  if (current.some(m => m.target === target)) {
+    showToast('That milestone already exists');
+    return;
+  }
+  current.push({ target, label: formatMilestoneLabel(target) });
+  current.sort((a, b) => a.target - b.target);
+  userData.customMilestones = current;
+  await saveUserData();
+  input.value = '';
+  showToast('Milestone added');
+  refreshAfterMilestoneChange();
+});
+
+document.getElementById('resetMilestonesBtn').addEventListener('click', async () => {
+  if (!confirm('Reset to the default milestone ladder? Your custom milestones will be removed.')) return;
+  userData.customMilestones = null;
+  await saveUserData();
+  showToast('Reset to default milestones');
+  refreshAfterMilestoneChange();
+});
 
 let currentEditId = null;
 
@@ -427,7 +525,7 @@ document.getElementById('resetSankalpBtn').addEventListener('click', async () =>
   if (!confirm('Reset your Sankalp? This will clear your saved target and date.')) return;
   userData.sankalp = null;
   await saveUserData();
-  document.getElementById('sankalpTargetSelect').value = String(MILESTONES[0].target);
+  document.getElementById('sankalpTargetSelect').value = String(getMilestones()[0].target);
   document.getElementById('sankalpCustomWrap').classList.add('hidden');
   document.getElementById('sankalpCustomInput').value = '';
   document.getElementById('sankalpTargetDate').valueAsDate = new Date();
@@ -457,12 +555,12 @@ async function updateSankalp(lifetime, today) {
   const select = document.getElementById('sankalpTargetSelect');
   const customWrap = document.getElementById('sankalpCustomWrap');
   const customInput = document.getElementById('sankalpCustomInput');
-  select.innerHTML = MILESTONES.map(m => `<option value="${m.target}">${m.label}</option>`).join('')
+  select.innerHTML = getMilestones().map(m => `<option value="${m.target}">${m.label}</option>`).join('')
     + `<option value="custom">Custom Target</option>`;
 
   const saved = userData && userData.sankalp;
   if (saved) {
-    const isPreset = MILESTONES.some(m => m.target === saved.target);
+    const isPreset = getMilestones().some(m => m.target === saved.target);
     if (isPreset) {
       select.value = String(saved.target);
       customWrap.classList.add('hidden');
