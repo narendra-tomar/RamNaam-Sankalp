@@ -1055,6 +1055,10 @@ document.getElementById('voiceCountToggle').addEventListener('click', () => {
   }
 });
 
+document.getElementById('voiceSensitivitySlider').addEventListener('input', (e) => {
+  document.getElementById('voiceSensitivityValue').textContent = e.target.value;
+});
+
 async function startVoiceCount() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showToast('Voice count is not supported on this browser');

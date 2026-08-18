@@ -278,8 +278,12 @@
       <span id="voiceStatusText">Listening for chanting...</span>
     </div>
     <div id="voiceSensitivityWrap" class="hidden">
-      <label class="field-label">Sensitivity</label>
+      <label class="field-label">Sensitivity: <span id="voiceSensitivityValue">5</span> / 10</label>
       <input type="range" id="voiceSensitivitySlider" min="1" max="10" value="5">
+      <div class="voice-sensitivity-scale">
+        <span>Low (fewer false counts)</span>
+        <span>High (catches whispers)</span>
+      </div>
     </div>
 
     <div class="action-row">
