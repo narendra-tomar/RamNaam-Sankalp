@@ -975,18 +975,42 @@ document.getElementById('sessionPauseBtn').addEventListener('click', () => {
   }
 });
 
+let sessionCompleting = false;
+
 document.getElementById('sessionCompleteBtn').addEventListener('click', async () => {
+  // Guard against double-tap creating two entries: check-and-set happens
+  // synchronously before any await, so a second click fired while the first
+  // save is still in flight bails out immediately instead of racing it.
+  if (sessionCompleting) return;
+  sessionCompleting = true;
+  const completeBtn = document.getElementById('sessionCompleteBtn');
+  completeBtn.disabled = true;
+
   clearInterval(sessionInterval);
   sessionActive = false;
   if (voiceCountActive) stopVoiceCount();
-  if (sessionCount > 0) {
-    await addJaapEntry(sessionCount, getTodayStr(), `Session: ${formatTime(sessionTimer)}`);
-  }
+
+  // Capture and reset session state immediately -- before the await -- so
+  // even a re-entrant call would see sessionCount already back at 0.
+  const countToSave = sessionCount;
+  const timeToSave = sessionTimer;
   sessionCount = 0;
   sessionTimer = 0;
   document.getElementById('sessionCount').textContent = '0';
   document.getElementById('sessionTimer').textContent = '00:00:00';
   document.getElementById('sessionPauseBtn').textContent = 'Pause';
+
+  if (countToSave > 0) {
+    try {
+      await addJaapEntry(countToSave, getTodayStr(), `Session: ${formatTime(timeToSave)}`);
+    } catch (err) {
+      console.error('Error saving session entry:', err);
+      showToast('Could not save session -- check your connection and add it manually if needed');
+    }
+  }
+
+  completeBtn.disabled = false;
+  sessionCompleting = false;
   closeAllModals();
 });
 
@@ -994,6 +1018,8 @@ function startSessionTimer() {
   clearInterval(sessionInterval);
   sessionCount = 0;
   sessionTimer = 0;
+  sessionCompleting = false;
+  document.getElementById('sessionCompleteBtn').disabled = false;
   document.getElementById('sessionCount').textContent = '0';
   document.getElementById('sessionTimer').textContent = '00:00:00';
   document.getElementById('sessionPauseBtn').textContent = 'Pause';
@@ -1019,7 +1045,7 @@ let voiceMicStream = null;
 let voiceAnimationFrame = null;
 let voiceAboveThreshold = false;
 let voiceLastCountTime = 0;
-const VOICE_COOLDOWN_MS = 350;
+const VOICE_COOLDOWN_MS = 200;
 
 document.getElementById('voiceCountToggle').addEventListener('click', () => {
   if (voiceCountActive) {
@@ -1098,15 +1124,20 @@ function monitorVoiceLevel() {
   const sensitivity = parseInt(document.getElementById('voiceSensitivitySlider').value) || 5;
   const threshold = 0.11 - (sensitivity * 0.008);
 
+  // Count on the cooldown tick whenever sound is sustained above threshold,
+  // not just on the first below->above transition. Fast, continuous chanting
+  // with no gap between repetitions never dips below threshold, so gating
+  // purely on a rising edge would only ever count once for the whole burst.
+  // Pacing counts to the cooldown while sustained approximates repetition
+  // rate instead -- the cooldown is the practical ceiling on how fast this
+  // can count (default ~5/sec), which is a real limit of volume-based
+  // detection, not word-boundary detection.
   const now = Date.now();
-  if (rms > threshold) {
-    if (!voiceAboveThreshold && (now - voiceLastCountTime) > VOICE_COOLDOWN_MS) {
-      incrementSessionCount(1);
-      voiceLastCountTime = now;
-    }
-    voiceAboveThreshold = true;
-  } else {
-    voiceAboveThreshold = false;
+  voiceAboveThreshold = rms > threshold;
+
+  if (voiceAboveThreshold && (now - voiceLastCountTime) > VOICE_COOLDOWN_MS) {
+    incrementSessionCount(1);
+    voiceLastCountTime = now;
   }
 
   voiceAnimationFrame = requestAnimationFrame(monitorVoiceLevel);
