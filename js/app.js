@@ -900,6 +900,7 @@ function openModal(modal) {
 function closeAllModals() {
   modalOverlay.classList.add('hidden');
   document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+  if (voiceCountActive) stopVoiceCount();
 }
 
 // Set default dates when modals open
@@ -948,14 +949,17 @@ let sessionCount = 0;
 let sessionTimer = 0;
 let sessionInterval = null;
 
-document.getElementById('sessionPlus1').addEventListener('click', () => {
-  sessionCount++;
+function incrementSessionCount(n) {
+  sessionCount += n;
   document.getElementById('sessionCount').textContent = formatIndianNumber(sessionCount);
+}
+
+document.getElementById('sessionPlus1').addEventListener('click', () => {
+  incrementSessionCount(1);
 });
 
 document.getElementById('sessionPlus108').addEventListener('click', () => {
-  sessionCount += 108;
-  document.getElementById('sessionCount').textContent = formatIndianNumber(sessionCount);
+  incrementSessionCount(108);
 });
 
 document.getElementById('sessionPauseBtn').addEventListener('click', () => {
@@ -974,6 +978,7 @@ document.getElementById('sessionPauseBtn').addEventListener('click', () => {
 document.getElementById('sessionCompleteBtn').addEventListener('click', async () => {
   clearInterval(sessionInterval);
   sessionActive = false;
+  if (voiceCountActive) stopVoiceCount();
   if (sessionCount > 0) {
     await addJaapEntry(sessionCount, getTodayStr(), `Session: ${formatTime(sessionTimer)}`);
   }
@@ -1000,6 +1005,111 @@ function startSessionTimer() {
 function updateSessionTimer() {
   sessionTimer = Math.floor((Date.now() - sessionStartTime) / 1000);
   document.getElementById('sessionTimer').textContent = formatTime(sessionTimer);
+}
+
+// ============================================================
+// VOICE COUNT (sound-triggered auto-counting, optional add-on
+// to the existing +1 / +108 manual buttons -- neither replaces
+// the other; both can be used in the same session)
+// ============================================================
+let voiceCountActive = false;
+let voiceAudioContext = null;
+let voiceAnalyser = null;
+let voiceMicStream = null;
+let voiceAnimationFrame = null;
+let voiceAboveThreshold = false;
+let voiceLastCountTime = 0;
+const VOICE_COOLDOWN_MS = 350;
+
+document.getElementById('voiceCountToggle').addEventListener('click', () => {
+  if (voiceCountActive) {
+    stopVoiceCount();
+  } else {
+    startVoiceCount();
+  }
+});
+
+async function startVoiceCount() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Voice count is not supported on this browser');
+    return;
+  }
+
+  try {
+    voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    console.error('Microphone access error:', err);
+    showToast('Microphone permission denied');
+    return;
+  }
+
+  voiceAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = voiceAudioContext.createMediaStreamSource(voiceMicStream);
+  voiceAnalyser = voiceAudioContext.createAnalyser();
+  voiceAnalyser.fftSize = 1024;
+  source.connect(voiceAnalyser);
+
+  voiceCountActive = true;
+  voiceAboveThreshold = false;
+  voiceLastCountTime = 0;
+
+  document.getElementById('voiceCountToggle').textContent = '🎤 Disable Voice Count';
+  document.getElementById('voiceCountStatus').classList.remove('hidden');
+  document.getElementById('voiceSensitivityWrap').classList.remove('hidden');
+
+  monitorVoiceLevel();
+}
+
+function stopVoiceCount() {
+  voiceCountActive = false;
+
+  if (voiceAnimationFrame) {
+    cancelAnimationFrame(voiceAnimationFrame);
+    voiceAnimationFrame = null;
+  }
+  if (voiceMicStream) {
+    voiceMicStream.getTracks().forEach(track => track.stop());
+    voiceMicStream = null;
+  }
+  if (voiceAudioContext) {
+    voiceAudioContext.close().catch(() => {});
+    voiceAudioContext = null;
+  }
+  voiceAnalyser = null;
+
+  document.getElementById('voiceCountToggle').textContent = '🎤 Enable Voice Count';
+  document.getElementById('voiceCountStatus').classList.add('hidden');
+  document.getElementById('voiceSensitivityWrap').classList.add('hidden');
+}
+
+function monitorVoiceLevel() {
+  if (!voiceCountActive || !voiceAnalyser) return;
+
+  const data = new Uint8Array(voiceAnalyser.fftSize);
+  voiceAnalyser.getByteTimeDomainData(data);
+
+  let sumSquares = 0;
+  for (let i = 0; i < data.length; i++) {
+    const normalized = (data[i] - 128) / 128;
+    sumSquares += normalized * normalized;
+  }
+  const rms = Math.sqrt(sumSquares / data.length);
+
+  const sensitivity = parseInt(document.getElementById('voiceSensitivitySlider').value) || 5;
+  const threshold = 0.11 - (sensitivity * 0.008);
+
+  const now = Date.now();
+  if (rms > threshold) {
+    if (!voiceAboveThreshold && (now - voiceLastCountTime) > VOICE_COOLDOWN_MS) {
+      incrementSessionCount(1);
+      voiceLastCountTime = now;
+    }
+    voiceAboveThreshold = true;
+  } else {
+    voiceAboveThreshold = false;
+  }
+
+  voiceAnimationFrame = requestAnimationFrame(monitorVoiceLevel);
 }
 
 // ============================================================

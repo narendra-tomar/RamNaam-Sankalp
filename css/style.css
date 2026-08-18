@@ -571,6 +571,33 @@ html, body {
   margin-bottom: 20px;
 }
 
+.voice-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--saffron-dark);
+}
+.voice-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--saffron);
+  animation: voicePulse 1.2s ease-in-out infinite;
+}
+@keyframes voicePulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+#voiceSensitivityWrap {
+  margin-top: 10px;
+}
+#voiceSensitivitySlider {
+  width: 100%;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
