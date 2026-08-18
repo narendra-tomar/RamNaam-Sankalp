@@ -268,13 +268,13 @@ html, body {
   font-size: 12px;
   color: var(--text-secondary);
   letter-spacing: 2px;
-  margin-bottom: 20px;
 }
 .hero-scale-label {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--saffron-dark);
   font-weight: 600;
   margin-top: 4px;
+  margin-bottom: 20px;
 }
 
 .progress-ring-wrap {
