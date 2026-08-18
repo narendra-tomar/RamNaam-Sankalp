@@ -166,8 +166,18 @@
     <section id="tab-history" class="tab-panel">
       <div class="card">
         <div class="card-heading">Jaap History</div>
+        <div class="history-filter-bar">
+          <input type="text" id="historySearchInput" class="field-input history-filter-search" placeholder="Search notes (e.g. Session, mala)...">
+          <input type="date" id="historyFromDate" class="field-input history-filter-date" title="From date">
+          <input type="date" id="historyToDate" class="field-input history-filter-date" title="To date">
+        </div>
         <div id="historyList" class="history-list">
           <div class="empty-state">No entries yet. Add your first Jaap.</div>
+        </div>
+        <div class="pagination-bar">
+          <button id="historyPrevBtn" class="btn btn-outline" disabled>‹ Prev</button>
+          <span id="historyPageIndicator">Page 1 of 1</span>
+          <button id="historyNextBtn" class="btn btn-outline" disabled>Next ›</button>
         </div>
       </div>
     </section>
@@ -224,7 +234,7 @@
           </div>
         </div>
         <div id="adminUserList" class="history-list"></div>
-        <div class="admin-pagination">
+        <div class="pagination-bar">
           <button id="adminPrevBtn" class="btn btn-outline" disabled>‹ Prev</button>
           <span id="adminPageIndicator">Page 1 of 1</span>
           <button id="adminNextBtn" class="btn btn-outline" disabled>Next ›</button>

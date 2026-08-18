@@ -407,8 +407,8 @@ html, body {
 .history-count { font-weight: 600; font-size: 15px; }
 .empty-state { color: var(--text-secondary); font-size: 14px; text-align: center; padding: 24px 0; }
 
-/* ---------- Admin pagination ---------- */
-.admin-pagination {
+/* ---------- Pagination (Admin + History) ---------- */
+.pagination-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -416,13 +416,30 @@ html, body {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.admin-pagination .btn {
+.pagination-bar .btn {
   padding: 8px 16px;
   font-size: 13px;
 }
-.admin-pagination .btn:disabled {
+.pagination-bar .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ---------- History filter bar ---------- */
+.history-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.history-filter-bar .field-input {
+  margin: 0;
+}
+.history-filter-search {
+  flex: 1 1 100%;
+}
+.history-filter-date {
+  flex: 1 1 calc(50% - 5px);
 }
 
 .admin-bulk-bar {

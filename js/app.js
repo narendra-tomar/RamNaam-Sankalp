@@ -492,14 +492,47 @@ window.editEntry = function(id, count, date) {
   openModal(document.getElementById('editEntryModal'));
 };
 
-function updateHistoryFromEntries(entries) {
-  const sorted = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+// ============================================================
+// HISTORY -- cached entries with search/date filtering and pagination
+// ============================================================
+const HISTORY_PAGE_SIZE = 15;
+let historyEntriesCache = [];
+let historyCurrentPage = 1;
+let historySearchTerm = '';
 
+function updateHistoryFromEntries(entries) {
+  historyEntriesCache = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  historyCurrentPage = 1;
+  renderHistoryPage();
+}
+
+function getFilteredHistoryEntries() {
+  const fromDate = document.getElementById('historyFromDate').value;
+  const toDate = document.getElementById('historyToDate').value;
+
+  return historyEntriesCache.filter(e => {
+    if (historySearchTerm && !(e.notes || '').toLowerCase().includes(historySearchTerm)) return false;
+    if (fromDate && e.date < fromDate) return false;
+    if (toDate && e.date > toDate) return false;
+    return true;
+  });
+}
+
+function renderHistoryPage() {
   const historyList = document.getElementById('historyList');
-  if (sorted.length === 0) {
-    historyList.innerHTML = '<div class="empty-state">No entries yet. Add your first Jaap.</div>';
+  const filtered = getFilteredHistoryEntries();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE));
+  historyCurrentPage = Math.min(Math.max(1, historyCurrentPage), totalPages);
+
+  if (filtered.length === 0) {
+    historyList.innerHTML = historyEntriesCache.length === 0
+      ? '<div class="empty-state">No entries yet. Add your first Jaap.</div>'
+      : '<div class="empty-state">No entries match your filters.</div>';
   } else {
-    historyList.innerHTML = sorted.slice(0, 50).map(e => `
+    const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
+    const pageEntries = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+
+    historyList.innerHTML = pageEntries.map(e => `
       <div class="history-item" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="editEntry('${e.id}', ${e.count}, '${e.date}')">
         <div>
           <div class="history-date">${e.date}</div>
@@ -509,7 +542,37 @@ function updateHistoryFromEntries(entries) {
       </div>
     `).join('');
   }
+
+  document.getElementById('historyPageIndicator').textContent = `Page ${historyCurrentPage} of ${totalPages}`;
+  document.getElementById('historyPrevBtn').disabled = historyCurrentPage <= 1;
+  document.getElementById('historyNextBtn').disabled = historyCurrentPage >= totalPages;
 }
+
+document.getElementById('historySearchInput').addEventListener('input', (e) => {
+  historySearchTerm = e.target.value.trim().toLowerCase();
+  historyCurrentPage = 1;
+  renderHistoryPage();
+});
+
+document.getElementById('historyFromDate').addEventListener('change', () => {
+  historyCurrentPage = 1;
+  renderHistoryPage();
+});
+
+document.getElementById('historyToDate').addEventListener('change', () => {
+  historyCurrentPage = 1;
+  renderHistoryPage();
+});
+
+document.getElementById('historyPrevBtn').addEventListener('click', () => {
+  historyCurrentPage--;
+  renderHistoryPage();
+});
+
+document.getElementById('historyNextBtn').addEventListener('click', () => {
+  historyCurrentPage++;
+  renderHistoryPage();
+});
 
 // Add event listeners for edit modal
 document.getElementById('saveEditBtn').addEventListener('click', async () => {
