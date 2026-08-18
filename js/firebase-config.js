@@ -10,7 +10,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebas
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDXhBCn3KloEPKjvIIdYmU9_owZOWu-fw",
-  authDomain: "ramnaam-sankalp.web.app",
+  authDomain: "ramnaam-sankalp.firebaseapp.com",
   projectId: "ramnaam-sankalp",
   storageBucket: "ramnaam-sankalp.appspot.com",
   messagingSenderId: "118894351329",
