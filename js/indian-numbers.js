@@ -12,9 +12,15 @@ export function formatIndianNumber(num) {
 
 export function formatCroreLakh(num) {
   const n = Math.abs(Number(num) || 0);
+  if (n >= 1e12) {
+    return `${(n / 1e12).toFixed(2)} Trillion`;
+  }
+  if (n >= 1e9) {
+    return `${(n / 1e9).toFixed(2)} Billion`;
+  }
   if (n >= 1e7) {
     const cr = n / 1e7;
-    return `${cr.toFixed(cr >= 100 ? 1 : 2)} Crore`;
+    return `${cr.toFixed(2)} Crore`;
   }
   if (n >= 1e5) {
     const lakh = n / 1e5;

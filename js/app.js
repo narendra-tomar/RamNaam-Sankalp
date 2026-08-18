@@ -340,6 +340,14 @@ async function refreshUI() {
 function updateDashboard(lifetime, today, week, month, year, streak) {
   lifetimeCount.textContent = formatIndianNumber(lifetime);
 
+  const scaleLabelEl = document.getElementById('heroScaleLabel');
+  if (lifetime >= 1e7) {
+    scaleLabelEl.textContent = `≈ ${formatCroreLakh(lifetime)} till date`;
+    scaleLabelEl.classList.remove('hidden');
+  } else {
+    scaleLabelEl.classList.add('hidden');
+  }
+
   const goal = getLifetimeGoal();
   const pctGoal = (lifetime / goal) * 100;
   const goalLabel = formatBillionLabel(goal);
