@@ -504,7 +504,15 @@ let historySearchTerm = '';
 let historySelectedIds = new Set();
 
 function updateHistoryFromEntries(entries) {
-  historyEntriesCache = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  historyEntriesCache = [...entries].sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    // Same day: break the tie with creation time so the most recently
+    // added entry is always on top, not whatever order Firestore returned.
+    const aTime = (a.createdAt && a.createdAt.toMillis) ? a.createdAt.toMillis() : 0;
+    const bTime = (b.createdAt && b.createdAt.toMillis) ? b.createdAt.toMillis() : 0;
+    return bTime - aTime;
+  });
   historyCurrentPage = 1;
   historySelectedIds = new Set();
   renderHistoryPage();
