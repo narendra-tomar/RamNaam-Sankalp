@@ -272,6 +272,23 @@ async function fetchAllEntries() {
   return entries;
 }
 
+// Entries older than the RECENT_WINDOW_DAYS window -- already invisible
+// everywhere in the app (History, stats, streak all only ever fetch the
+// recent window), so these exist purely as storage overhead. Uses the
+// same userId+date composite index as fetchRecentEntries, just the
+// opposite direction on the date range, so no new index is needed.
+async function fetchOldEntries(targetUid) {
+  const q = query(
+    collection(db, 'jaapEntries'),
+    where('userId', '==', targetUid),
+    where('date', '<', getDateBefore(RECENT_WINDOW_DAYS))
+  );
+  const snap = await getDocs(q);
+  const entries = [];
+  snap.forEach(doc => entries.push({ id: doc.id, ...doc.data() }));
+  return entries;
+}
+
 // userData.lifetimeTotal is maintained incrementally on every add/edit/delete
 // so the lifetime count doesn't need to re-sum the full entry history each
 // refresh. The first time this runs for an existing user, it does one full
@@ -904,6 +921,7 @@ function renderAdminPage() {
               <button class="btn btn-outline" style="flex:1;" onclick="toggleUserDisabled('${u.uid}', ${!u.disabled})">${u.disabled ? 'Enable' : 'Disable'}</button>
               <button class="btn btn-outline" style="flex:1; background:#ff6b6b; color:#fff; border:none;" onclick="deleteUserData('${u.uid}')">Delete Data</button>
             </div>
+            <button class="btn btn-outline btn-full" style="margin-top: 4px;" onclick="cleanupUserOldEntries('${u.uid}')">Clean Up Old Entries (Keep Count)</button>
           `}
         </div>
       `;
@@ -975,6 +993,19 @@ window.deleteUserData = async function(uid) {
 
   showToast('User data deleted and access disabled');
   renderAdminPage();
+};
+
+window.cleanupUserOldEntries = async function(uid) {
+  if (!isSuperAdmin || uid === currentUser.uid) return;
+  const oldEntries = await fetchOldEntries(uid);
+  if (oldEntries.length === 0) {
+    showToast('No entries older than 400 days for this user');
+    return;
+  }
+  if (!confirm(`Delete ${oldEntries.length} entries older than 400 days for this user? This frees up storage but does NOT change their lifetime count. This cannot be undone.`)) return;
+
+  await Promise.all(oldEntries.map(e => deleteDoc(doc(db, 'jaapEntries', e.id))));
+  showToast(`${oldEntries.length} old entries deleted for this user, their lifetime count unchanged`);
 };
 
 async function bulkSetDisabled(disable) {
@@ -1313,6 +1344,18 @@ document.getElementById('exportDataBtn').addEventListener('click', async () => {
   const json = JSON.stringify(data, null, 2);
   downloadJSON(json, 'ramnaam-sankalp-backup.json');
   showToast('Data exported');
+});
+
+document.getElementById('cleanupOldEntriesBtn').addEventListener('click', async () => {
+  const oldEntries = await fetchOldEntries(currentUser.uid);
+  if (oldEntries.length === 0) {
+    showToast('No entries older than 400 days to clean up');
+    return;
+  }
+  if (!confirm(`Delete ${oldEntries.length} entries older than 400 days? This frees up storage but does NOT change your lifetime count. This cannot be undone.`)) return;
+
+  await Promise.all(oldEntries.map(e => deleteDoc(doc(db, 'jaapEntries', e.id))));
+  showToast(`${oldEntries.length} old entries deleted, lifetime count unchanged`);
 });
 
 // ============================================================
