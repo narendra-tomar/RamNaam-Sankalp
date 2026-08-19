@@ -141,7 +141,27 @@ const toast = document.getElementById('toast');
 // ============================================================
 // AUTH
 // ============================================================
+// Persisted to localStorage (capped at 50 lines) so this can be checked
+// from Settings without needing DevTools -- hard to reach on mobile,
+// especially iOS, while diagnosing the repeated-logout issue.
+function logAuthEvent(msg) {
+  const line = `${new Date().toISOString()} ${msg}`;
+  console.log('[Auth]', msg);
+  try {
+    const log = JSON.parse(localStorage.getItem('authDebugLog') || '[]');
+    log.push(line);
+    while (log.length > 50) log.shift();
+    localStorage.setItem('authDebugLog', JSON.stringify(log));
+  } catch (err) {
+    console.error('[Auth] Could not persist debug log:', err);
+  }
+}
+
+logAuthEvent('App started -- waiting for auth state...');
+
 onAuthStateChanged(auth, async (user) => {
+  logAuthEvent(`onAuthStateChanged fired -- user: ${user ? user.email : 'null (signed out)'}`);
+
   if (user) {
     currentUser = user;
     isSuperAdmin = user.email === SUPERADMIN_EMAIL;
@@ -149,11 +169,13 @@ onAuthStateChanged(auth, async (user) => {
 
     try {
       await loadUserData();
+      logAuthEvent(`loadUserData succeeded, disabled: ${userData.disabled}`);
     } catch (err) {
-      console.error('Error:', err);
+      logAuthEvent(`loadUserData FAILED: ${err.message}`);
     }
 
     if (userData.disabled) {
+      logAuthEvent('Account is disabled -- signing out.');
       showToast('Your access has been disabled.');
       await signOut(auth);
       return;
@@ -171,10 +193,14 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 googleSignInBtn.addEventListener('click', () => {
-  signInWithPopup(auth, provider).catch(err => console.error(err));
+  logAuthEvent('Sign-in button clicked');
+  signInWithPopup(auth, provider)
+    .then(() => logAuthEvent('signInWithPopup succeeded'))
+    .catch(err => logAuthEvent(`signInWithPopup FAILED: ${err.code || err.message}`));
 });
 
 signOutBtn.addEventListener('click', () => {
+  logAuthEvent('Manual sign-out button clicked');
   signOut(auth);
 });
 
@@ -1065,6 +1091,7 @@ function closeAllModals() {
   modalOverlay.classList.add('hidden');
   document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
   if (voiceCountActive) stopVoiceCount();
+  releaseWakeLock();
 }
 
 // Set default dates when modals open
@@ -1103,6 +1130,39 @@ document.getElementById('submitMalaBtn').addEventListener('click', async () => {
     await addJaapEntry(total, date, `${malaCount} × ${malaSize} mala`);
     document.getElementById('malaCountInput').value = '';
     closeAllModals();
+  }
+});
+
+// ============================================================
+// SCREEN WAKE LOCK (keep the screen on during a Jaap Session)
+// ============================================================
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (err) {
+    console.error('Wake Lock request failed:', err);
+  }
+}
+
+async function releaseWakeLock() {
+  if (!wakeLock) return;
+  try {
+    await wakeLock.release();
+  } catch (err) {
+    // already released or unavailable -- nothing to do
+  }
+  wakeLock = null;
+}
+
+// The browser auto-releases the wake lock when the tab is hidden. If a
+// session is still active when the tab becomes visible again, re-acquire it.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && sessionActive && !wakeLock) {
+    requestWakeLock();
   }
 });
 
@@ -1190,6 +1250,7 @@ function startSessionTimer() {
   sessionStartTime = Date.now();
   sessionInterval = setInterval(updateSessionTimer, 100);
   sessionActive = true;
+  requestWakeLock();
 }
 
 function updateSessionTimer() {
@@ -1356,6 +1417,23 @@ document.getElementById('cleanupOldEntriesBtn').addEventListener('click', async 
 
   await Promise.all(oldEntries.map(e => deleteDoc(doc(db, 'jaapEntries', e.id))));
   showToast(`${oldEntries.length} old entries deleted, lifetime count unchanged`);
+});
+
+document.getElementById('copyAuthLogBtn').addEventListener('click', async () => {
+  let log;
+  try {
+    log = JSON.parse(localStorage.getItem('authDebugLog') || '[]');
+  } catch (err) {
+    log = [];
+  }
+  const text = log.length > 0 ? log.join('\n') : 'No sign-in events recorded yet on this device.';
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Debug log copied to clipboard');
+  } catch (err) {
+    alert(text);
+  }
 });
 
 // ============================================================
