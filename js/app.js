@@ -1069,7 +1069,7 @@ function closeAllModals() {
 
 // Set default dates when modals open
 function setDefaultDates() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayStr();
   const jaapDate = document.getElementById('jaapDateInput');
   const malaDate = document.getElementById('malaDateInput');
   if (jaapDate) jaapDate.value = today;
