@@ -603,7 +603,7 @@ document.getElementById('historyBulkDeleteBtn').addEventListener('click', async 
   if (!confirm(`Delete ${ids.length} selected entr${ids.length === 1 ? 'y' : 'ies'}? This frees up storage but does NOT change your lifetime count or milestones. This cannot be undone.`)) return;
 
   await Promise.all(ids.map(id => deleteDoc(doc(db, 'jaapEntries', id))));
-  showToast(`${ids.length} entr${ids.length === 1 ? 'y' : 'ies'} deleted`);
+  showToast(`${ids.length} entr${ids.length === 1 ? 'y' : 'ies'} deleted, lifetime count unchanged`);
   historySelectedIds = new Set();
   refreshUI();
 });
@@ -651,15 +651,25 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('deleteEntryBtn').addEventListener('click', async () => {
+document.getElementById('deleteEntryReduceBtn').addEventListener('click', async () => {
   if (!currentEditId) return;
-  if (confirm('Delete this entry?')) {
+  if (confirm('Delete this entry and reduce your lifetime count by its amount?')) {
     await deleteDoc(doc(db, 'jaapEntries', currentEditId));
     userData.lifetimeTotal = Math.max(0, (userData.lifetimeTotal || 0) - currentEditOldCount);
     await saveUserData();
     closeAllModals();
     refreshUI();
-    showToast('Entry deleted');
+    showToast('Entry deleted, lifetime count reduced');
+  }
+});
+
+document.getElementById('deleteEntryKeepBtn').addEventListener('click', async () => {
+  if (!currentEditId) return;
+  if (confirm('Delete this entry but keep your lifetime count exactly as it is?')) {
+    await deleteDoc(doc(db, 'jaapEntries', currentEditId));
+    closeAllModals();
+    refreshUI();
+    showToast('Entry deleted, lifetime count unchanged');
   }
 });
 

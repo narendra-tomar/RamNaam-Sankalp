@@ -179,7 +179,7 @@
           </label>
           <div id="historyBulkActions" class="bulk-actions hidden">
             <span id="historySelectedCount">0 selected</span>
-            <button id="historyBulkDeleteBtn" class="btn btn-outline" style="background:#ff6b6b; color:#fff; border:none;">Delete Selected</button>
+            <button id="historyBulkDeleteBtn" class="btn btn-outline" style="background:#ff6b6b; color:#fff; border:none;">Delete Selected (Keep Count)</button>
           </div>
         </div>
         <div class="bulk-delete-note">Deleting entries here only frees up storage — your lifetime count and milestones are not affected.</div>
@@ -337,7 +337,13 @@
     <div class="action-row">
       <button id="saveEditBtn" class="btn btn-primary btn-full">Update Entry</button>
     </div>
-    <button id="deleteEntryBtn" class="btn btn-outline btn-full" style="margin-top: 12px; background: #ff6b6b; color: white; border: none;">Delete Entry</button>
+    <hr class="divider">
+    <div class="field-label" style="margin-top: 0;">Delete this entry</div>
+    <div class="delete-choice-note">Choose how deleting should affect your lifetime count.</div>
+    <div class="action-row">
+      <button id="deleteEntryReduceBtn" class="btn btn-outline" style="flex:1; background: #ff6b6b; color: white; border: none;">This was a mistake<br><span class="btn-subtext">(reduce my count)</span></button>
+      <button id="deleteEntryKeepBtn" class="btn btn-outline" style="flex:1;">Just cleaning up<br><span class="btn-subtext">(keep my count)</span></button>
+    </div>
   </div>
 
 </div>

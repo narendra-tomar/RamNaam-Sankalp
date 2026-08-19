@@ -487,6 +487,16 @@ html, body {
   margin-top: -8px;
   margin-bottom: 14px;
 }
+.delete-choice-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+.btn-subtext {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.85;
+}
 
 /* ---------- Forms ---------- */
 .field-label {
