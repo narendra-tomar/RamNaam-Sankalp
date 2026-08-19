@@ -448,7 +448,7 @@ html, body {
   flex: 1 1 calc(50% - 5px);
 }
 
-.admin-bulk-bar {
+.bulk-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -457,29 +457,35 @@ html, body {
   margin-bottom: 14px;
   font-size: 13px;
 }
-.admin-select-all {
+.select-all-label {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
   cursor: pointer;
 }
-.admin-bulk-actions {
+.bulk-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   color: var(--text-secondary);
 }
-.admin-bulk-actions .btn {
+.bulk-actions .btn {
   padding: 8px 14px;
   font-size: 13px;
 }
-.admin-select-checkbox {
+.select-checkbox {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   cursor: pointer;
+}
+.bulk-delete-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: -8px;
+  margin-bottom: 14px;
 }
 
 /* ---------- Forms ---------- */

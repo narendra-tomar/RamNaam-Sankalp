@@ -501,10 +501,12 @@ const HISTORY_PAGE_SIZE = 15;
 let historyEntriesCache = [];
 let historyCurrentPage = 1;
 let historySearchTerm = '';
+let historySelectedIds = new Set();
 
 function updateHistoryFromEntries(entries) {
   historyEntriesCache = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
   historyCurrentPage = 1;
+  historySelectedIds = new Set();
   renderHistoryPage();
 }
 
@@ -518,6 +520,12 @@ function getFilteredHistoryEntries() {
     if (toDate && e.date > toDate) return false;
     return true;
   });
+}
+
+function getCurrentPageHistoryIds() {
+  const filtered = getFilteredHistoryEntries();
+  const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
+  return filtered.slice(start, start + HISTORY_PAGE_SIZE).map(e => e.id);
 }
 
 function renderHistoryPage() {
@@ -534,21 +542,63 @@ function renderHistoryPage() {
     const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
     const pageEntries = filtered.slice(start, start + HISTORY_PAGE_SIZE);
 
-    historyList.innerHTML = pageEntries.map(e => `
-      <div class="history-item" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="editEntry('${e.id}', ${e.count}, '${e.date}')">
-        <div>
+    historyList.innerHTML = pageEntries.map(e => {
+      const checked = historySelectedIds.has(e.id) ? 'checked' : '';
+      return `
+      <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <input type="checkbox" class="select-checkbox" ${checked} onchange="toggleHistorySelect('${e.id}', this.checked)">
+        <div style="flex: 1; cursor: pointer;" onclick="editEntry('${e.id}', ${e.count}, '${e.date}')">
           <div class="history-date">${e.date}</div>
           ${e.notes ? `<div class="history-notes">${e.notes}</div>` : ''}
         </div>
         <div class="history-count">${formatIndianNumber(e.count)}</div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   document.getElementById('historyPageIndicator').textContent = `Page ${historyCurrentPage} of ${totalPages}`;
   document.getElementById('historyPrevBtn').disabled = historyCurrentPage <= 1;
   document.getElementById('historyNextBtn').disabled = historyCurrentPage >= totalPages;
+  updateHistoryBulkBar();
 }
+
+function updateHistoryBulkBar() {
+  const count = historySelectedIds.size;
+  document.getElementById('historyBulkActions').classList.toggle('hidden', count === 0);
+  document.getElementById('historySelectedCount').textContent = `${count} selected`;
+
+  const pageIds = getCurrentPageHistoryIds();
+  const allSelected = pageIds.length > 0 && pageIds.every(id => historySelectedIds.has(id));
+  document.getElementById('historySelectAllCheckbox').checked = allSelected;
+}
+
+document.getElementById('historySelectAllCheckbox').addEventListener('change', (e) => {
+  const pageIds = getCurrentPageHistoryIds();
+  if (e.target.checked) {
+    pageIds.forEach(id => historySelectedIds.add(id));
+  } else {
+    pageIds.forEach(id => historySelectedIds.delete(id));
+  }
+  renderHistoryPage();
+});
+
+window.toggleHistorySelect = function(id, checked) {
+  if (checked) historySelectedIds.add(id);
+  else historySelectedIds.delete(id);
+  updateHistoryBulkBar();
+};
+
+document.getElementById('historyBulkDeleteBtn').addEventListener('click', async () => {
+  const ids = Array.from(historySelectedIds);
+  if (ids.length === 0) return;
+  if (!confirm(`Delete ${ids.length} selected entr${ids.length === 1 ? 'y' : 'ies'}? This frees up storage but does NOT change your lifetime count or milestones. This cannot be undone.`)) return;
+
+  await Promise.all(ids.map(id => deleteDoc(doc(db, 'jaapEntries', id))));
+  showToast(`${ids.length} entr${ids.length === 1 ? 'y' : 'ies'} deleted`);
+  historySelectedIds = new Set();
+  refreshUI();
+});
 
 document.getElementById('historySearchInput').addEventListener('input', (e) => {
   historySearchTerm = e.target.value.trim().toLowerCase();
@@ -825,7 +875,7 @@ function renderAdminPage() {
       return `
         <div class="history-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-            ${isSelf ? '<span style="width:18px;"></span>' : `<input type="checkbox" class="admin-select-checkbox" ${checked} onchange="toggleAdminSelect('${u.uid}', this.checked)">`}
+            ${isSelf ? '<span style="width:18px;"></span>' : `<input type="checkbox" class="select-checkbox" ${checked} onchange="toggleAdminSelect('${u.uid}', this.checked)">`}
             <div style="flex: 1;">
               <div class="history-date">${u.email || u.uid}</div>
               <div class="history-notes">${formatIndianNumber(lifetime)} lifetime jaap${u.disabled ? ' · <strong style="color:#c0392b">Disabled</strong>' : ''}</div>

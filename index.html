@@ -172,6 +172,17 @@
           <input type="date" id="historyFromDate" class="field-input history-filter-date" title="From date">
           <input type="date" id="historyToDate" class="field-input history-filter-date" title="To date">
         </div>
+        <div class="bulk-bar">
+          <label class="select-all-label">
+            <input type="checkbox" id="historySelectAllCheckbox">
+            <span>Select all on page</span>
+          </label>
+          <div id="historyBulkActions" class="bulk-actions hidden">
+            <span id="historySelectedCount">0 selected</span>
+            <button id="historyBulkDeleteBtn" class="btn btn-outline" style="background:#ff6b6b; color:#fff; border:none;">Delete Selected</button>
+          </div>
+        </div>
+        <div class="bulk-delete-note">Deleting entries here only frees up storage — your lifetime count and milestones are not affected.</div>
         <div id="historyList" class="history-list">
           <div class="empty-state">No entries yet. Add your first Jaap.</div>
         </div>
@@ -222,12 +233,12 @@
       <div class="card">
         <div class="card-heading">All Users</div>
         <input type="text" id="adminSearchInput" class="field-input" placeholder="Search by email..." style="margin-bottom: 14px;">
-        <div class="admin-bulk-bar">
-          <label class="admin-select-all">
+        <div class="bulk-bar">
+          <label class="select-all-label">
             <input type="checkbox" id="adminSelectAllCheckbox">
             <span>Select all on page</span>
           </label>
-          <div id="adminBulkActions" class="admin-bulk-actions hidden">
+          <div id="adminBulkActions" class="bulk-actions hidden">
             <span id="adminSelectedCount">0 selected</span>
             <button id="adminBulkDisableBtn" class="btn btn-outline">Disable</button>
             <button id="adminBulkEnableBtn" class="btn btn-outline">Enable</button>
