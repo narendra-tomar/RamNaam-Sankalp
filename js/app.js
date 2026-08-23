@@ -144,23 +144,23 @@ const toast = document.getElementById('toast');
 // Persisted to localStorage (capped at 50 lines) so this can be checked
 // from Settings without needing DevTools -- hard to reach on mobile,
 // especially iOS, while diagnosing the repeated-logout issue.
-function logAuthEvent(msg) {
+function logDebugEvent(msg) {
   const line = `${new Date().toISOString()} ${msg}`;
   console.log('[Auth]', msg);
   try {
-    const log = JSON.parse(localStorage.getItem('authDebugLog') || '[]');
+    const log = JSON.parse(localStorage.getItem('debugLog') || '[]');
     log.push(line);
     while (log.length > 50) log.shift();
-    localStorage.setItem('authDebugLog', JSON.stringify(log));
+    localStorage.setItem('debugLog', JSON.stringify(log));
   } catch (err) {
     console.error('[Auth] Could not persist debug log:', err);
   }
 }
 
-logAuthEvent('App started -- waiting for auth state...');
+logDebugEvent('App started -- waiting for auth state...');
 
 onAuthStateChanged(auth, async (user) => {
-  logAuthEvent(`onAuthStateChanged fired -- user: ${user ? user.email : 'null (signed out)'}`);
+  logDebugEvent(`onAuthStateChanged fired -- user: ${user ? user.email : 'null (signed out)'}`);
 
   if (user) {
     currentUser = user;
@@ -169,13 +169,13 @@ onAuthStateChanged(auth, async (user) => {
 
     try {
       await loadUserData();
-      logAuthEvent(`loadUserData succeeded, disabled: ${userData.disabled}`);
+      logDebugEvent(`loadUserData succeeded, disabled: ${userData.disabled}`);
     } catch (err) {
-      logAuthEvent(`loadUserData FAILED: ${err.message}`);
+      logDebugEvent(`loadUserData FAILED: ${err.message}`);
     }
 
     if (userData.disabled) {
-      logAuthEvent('Account is disabled -- signing out.');
+      logDebugEvent('Account is disabled -- signing out.');
       showToast('Your access has been disabled.');
       await signOut(auth);
       return;
@@ -193,14 +193,14 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 googleSignInBtn.addEventListener('click', () => {
-  logAuthEvent('Sign-in button clicked');
+  logDebugEvent('Sign-in button clicked');
   signInWithPopup(auth, provider)
-    .then(() => logAuthEvent('signInWithPopup succeeded'))
-    .catch(err => logAuthEvent(`signInWithPopup FAILED: ${err.code || err.message}`));
+    .then(() => logDebugEvent('signInWithPopup succeeded'))
+    .catch(err => logDebugEvent(`signInWithPopup FAILED: ${err.code || err.message}`));
 });
 
 signOutBtn.addEventListener('click', () => {
-  logAuthEvent('Manual sign-out button clicked');
+  logDebugEvent('Manual sign-out button clicked');
   signOut(auth);
 });
 
@@ -1294,8 +1294,17 @@ async function startVoiceCount() {
   try {
     voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (err) {
-    console.error('Microphone access error:', err);
-    showToast('Microphone permission denied');
+    console.error('Microphone access error:', err.name, err.message);
+    logDebugEvent(`Voice count mic error -- ${err.name}: ${err.message}`);
+    if (err.name === 'NotAllowedError') {
+      showToast('Mic blocked -- allow it in your browser/app site settings, then try again');
+    } else if (err.name === 'NotFoundError') {
+      showToast('No microphone found on this device');
+    } else if (err.name === 'NotReadableError') {
+      showToast('Microphone is busy or unavailable right now');
+    } else {
+      showToast(`Microphone error: ${err.name || err.message}`);
+    }
     return;
   }
 
@@ -1420,10 +1429,10 @@ document.getElementById('cleanupOldEntriesBtn').addEventListener('click', async 
   showToast(`${oldEntries.length} old entries deleted, lifetime count unchanged`);
 });
 
-document.getElementById('copyAuthLogBtn').addEventListener('click', async () => {
+document.getElementById('copyDebugLogBtn').addEventListener('click', async () => {
   let log;
   try {
-    log = JSON.parse(localStorage.getItem('authDebugLog') || '[]');
+    log = JSON.parse(localStorage.getItem('debugLog') || '[]');
   } catch (err) {
     log = [];
   }
