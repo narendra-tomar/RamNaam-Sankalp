@@ -6,7 +6,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultiTabManager } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDXhBCn3KloEPKjvIIdYmU9_owZOWu-fw",
@@ -27,7 +27,7 @@ export const auth = getAuth(firebaseApp);
 // can legitimately be open both as an installed app and a browser tab
 // at the same time.
 export const db = initializeFirestore(firebaseApp, {
-  localCache: persistentLocalCache({ tabManager: persistentMultiTabManager() })
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 });
 
 // browserLocalPersistence is already the default, but setting it explicitly
