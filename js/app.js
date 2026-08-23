@@ -262,9 +262,13 @@ async function addJaapEntry(count, date, notes = '') {
     notes,
     createdAt: Timestamp.now(),
   };
-  await addDoc(collection(db, 'jaapEntries'), entry);
   userData.lifetimeTotal = (userData.lifetimeTotal || 0) + safeCount;
-  await saveUserData();
+  // Independent writes to different documents -- run in parallel instead
+  // of one after another to roughly halve the network round-trip time.
+  await Promise.all([
+    addDoc(collection(db, 'jaapEntries'), entry),
+    saveUserData(),
+  ]);
   refreshUI();
   showToast('Jaap entry saved');
 }
@@ -1201,21 +1205,21 @@ document.getElementById('sessionPauseBtn').addEventListener('click', () => {
 
 let sessionCompleting = false;
 
-document.getElementById('sessionCompleteBtn').addEventListener('click', async () => {
-  // Guard against double-tap creating two entries: check-and-set happens
-  // synchronously before any await, so a second click fired while the first
-  // save is still in flight bails out immediately instead of racing it.
+document.getElementById('sessionCompleteBtn').addEventListener('click', () => {
+  // Guard against double-tap creating two entries: everything below --
+  // capturing the count, resetting session state, and closing the modal --
+  // happens synchronously with no await in between. Even a fast double-tap
+  // is processed by the browser only after this has already run once, by
+  // which point sessionCount is already back at 0. The actual save then
+  // happens in the background, so the modal closes immediately instead of
+  // waiting on the network round-trip.
   if (sessionCompleting) return;
   sessionCompleting = true;
-  const completeBtn = document.getElementById('sessionCompleteBtn');
-  completeBtn.disabled = true;
 
   clearInterval(sessionInterval);
   sessionActive = false;
   if (voiceCountActive) stopVoiceCount();
 
-  // Capture and reset session state immediately -- before the await -- so
-  // even a re-entrant call would see sessionCount already back at 0.
   const countToSave = sessionCount;
   const timeToSave = sessionTimer;
   sessionCount = 0;
@@ -1224,18 +1228,16 @@ document.getElementById('sessionCompleteBtn').addEventListener('click', async ()
   document.getElementById('sessionTimer').textContent = '00:00:00';
   document.getElementById('sessionPauseBtn').textContent = 'Pause';
 
-  if (countToSave > 0) {
-    try {
-      await addJaapEntry(countToSave, getTodayStr(), `Session: ${formatTime(timeToSave)}`);
-    } catch (err) {
-      console.error('Error saving session entry:', err);
-      showToast('Could not save session -- check your connection and add it manually if needed');
-    }
-  }
-
-  completeBtn.disabled = false;
-  sessionCompleting = false;
   closeAllModals();
+  sessionCompleting = false;
+
+  if (countToSave > 0) {
+    addJaapEntry(countToSave, getTodayStr(), `Session: ${formatTime(timeToSave)}`)
+      .catch(err => {
+        console.error('Error saving session entry:', err);
+        showToast('Could not save session -- check your connection and add it manually if needed');
+      });
+  }
 });
 
 function startSessionTimer() {
@@ -1243,7 +1245,6 @@ function startSessionTimer() {
   sessionCount = 0;
   sessionTimer = 0;
   sessionCompleting = false;
-  document.getElementById('sessionCompleteBtn').disabled = false;
   document.getElementById('sessionCount').textContent = '0';
   document.getElementById('sessionTimer').textContent = '00:00:00';
   document.getElementById('sessionPauseBtn').textContent = 'Pause';
