@@ -6,7 +6,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultiTabManager } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDXhBCn3KloEPKjvIIdYmU9_owZOWu-fw",
@@ -19,7 +19,16 @@ const firebaseConfig = {
 
 export const firebaseApp = initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
-export const db = getFirestore(firebaseApp);
+
+// Persistent local cache: without this, Firestore has no offline fallback
+// at all -- every read/write requires a live connection. This enables
+// reads to serve from cache when offline and writes to queue locally and
+// sync automatically once back online. Multi-tab manager since this PWA
+// can legitimately be open both as an installed app and a browser tab
+// at the same time.
+export const db = initializeFirestore(firebaseApp, {
+  localCache: persistentLocalCache({ tabManager: persistentMultiTabManager() })
+});
 
 // browserLocalPersistence is already the default, but setting it explicitly
 // removes any ambiguity while diagnosing the repeated-logout issue.
