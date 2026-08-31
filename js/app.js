@@ -63,6 +63,13 @@ function formatMilestoneLabel(target) {
   return `${Number.isInteger(cr) ? cr : cr.toFixed(2)} Crore`;
 }
 
+// Up to 4 decimals so tiny progress (e.g. just starting out) never collapses
+// to a meaningless "0.00%", but trailing zeros are trimmed so a value that
+// happens to be round (e.g. exactly 1.3%) doesn't show as "1.3000%".
+function formatPercent(pct) {
+  return parseFloat(pct.toFixed(4)) + '%';
+}
+
 function getLifetimeGoal() {
   return (userData && userData.lifetimeGoal) || BILLION;
 }
@@ -393,8 +400,8 @@ function updateDashboard(lifetime, today, week, month, year, streak) {
   const pctGoal = (lifetime / goal) * 100;
   const goalLabel = formatBillionLabel(goal);
 
-  ringPercent.textContent = pctGoal.toFixed(4) + '%';
-  pct100cr.textContent = pctGoal.toFixed(4) + '%';
+  ringPercent.textContent = formatPercent(pctGoal);
+  pct100cr.textContent = formatPercent(pctGoal);
   document.getElementById('heroSubGoalLabel').textContent = `${goalLabel} Billion`;
   document.getElementById('heroLabel').textContent = `${goalLabel} BILLION SANKALP`;
   document.getElementById('ringCaption').textContent = `of ${goalLabel} Bn`;
@@ -402,7 +409,7 @@ function updateDashboard(lifetime, today, week, month, year, streak) {
   const { current: nextMilestone } = getCurrentAndPrevMilestone(lifetime);
   const pctNext = (lifetime / nextMilestone.target) * 100;
   const phaseSuffix = nextMilestone.phase ? ` (Phase ${nextMilestone.phase})` : '';
-  pct10cr.textContent = pctNext.toFixed(4) + '%';
+  pct10cr.textContent = formatPercent(pctNext);
   document.getElementById('phaseLine').textContent = `${nextMilestone.label}${phaseSuffix}`;
 
   const circumference = 2 * Math.PI * 60;
@@ -1258,6 +1265,124 @@ function updateSessionTimer() {
   sessionTimer = Math.floor((Date.now() - sessionStartTime) / 1000);
   document.getElementById('sessionTimer').textContent = formatTime(sessionTimer);
 }
+
+// ============================================================
+// SILENT COUNT -- standalone full-screen eyes-closed counter.
+// Completely independent of the Jaap Session feature above: its own
+// screen, its own state, its own save path. Nothing here touches
+// Session's code or state.
+// ============================================================
+let silentCountValue = 0;
+let silentCountPressTimer = null;
+let silentCountRampInterval = null;
+let silentCountFinished = false;
+const SILENT_COUNT_LONG_PRESS_MS = 1500;
+
+document.getElementById('startSilentCountBtn').addEventListener('click', () => {
+  silentCountValue = 0;
+  silentCountFinished = false;
+  document.getElementById('silentCountValue').textContent = '0';
+  document.getElementById('silentCountIntro').classList.remove('hidden');
+  document.getElementById('silentCountMain').classList.add('hidden');
+  document.getElementById('silentCountScreen').classList.remove('hidden');
+});
+
+document.getElementById('silentCountBeginBtn').addEventListener('click', () => {
+  document.getElementById('silentCountIntro').classList.add('hidden');
+  document.getElementById('silentCountMain').classList.remove('hidden');
+});
+
+document.getElementById('silentCountCloseBtn').addEventListener('click', () => {
+  clearSilentCountPress();
+  if (silentCountValue > 0 && !confirm(`Discard this count of ${silentCountValue}? This cannot be undone.`)) {
+    return;
+  }
+  document.getElementById('silentCountScreen').classList.add('hidden');
+});
+
+function clearSilentCountRamp() {
+  if (silentCountRampInterval) {
+    clearInterval(silentCountRampInterval);
+    silentCountRampInterval = null;
+  }
+}
+
+function clearSilentCountPress() {
+  if (silentCountPressTimer) {
+    clearTimeout(silentCountPressTimer);
+    silentCountPressTimer = null;
+  }
+  clearSilentCountRamp();
+}
+
+function silentCountIncrement() {
+  silentCountValue++;
+  document.getElementById('silentCountValue').textContent = formatIndianNumber(silentCountValue);
+
+  if (!navigator.vibrate) return;
+  if (silentCountValue % 108 === 0) {
+    navigator.vibrate([120, 80, 120]); // distinct pattern: one mala complete
+  } else {
+    navigator.vibrate(30); // short confirm buzz
+  }
+}
+
+async function silentCountFinish() {
+  if (silentCountFinished) return;
+  silentCountFinished = true;
+
+  if (navigator.vibrate) navigator.vibrate(200); // final "saved" buzz
+
+  const countToSave = silentCountValue;
+  silentCountValue = 0;
+  document.getElementById('silentCountScreen').classList.add('hidden');
+
+  if (countToSave > 0) {
+    try {
+      await addJaapEntry(countToSave, getTodayStr(), 'Silent Count');
+    } catch (err) {
+      console.error('Error saving silent count entry:', err);
+      showToast('Could not save silent count -- check your connection and add it manually if needed');
+    }
+  }
+
+  silentCountFinished = false;
+}
+
+const silentCountMain = document.getElementById('silentCountMain');
+
+silentCountMain.addEventListener('pointerdown', () => {
+  if (silentCountFinished) return;
+  clearSilentCountPress();
+
+  silentCountPressTimer = setTimeout(() => {
+    silentCountPressTimer = null; // mark consumed before the eventual pointerup fires
+    clearSilentCountRamp();
+    silentCountFinish();
+  }, SILENT_COUNT_LONG_PRESS_MS);
+
+  // Ramping vibration during the hold -- builds in intensity so an
+  // unintentionally lingering touch gives a chance to let go before
+  // it actually triggers, instead of a single surprise buzz at the end.
+  let rampStep = 0;
+  silentCountRampInterval = setInterval(() => {
+    rampStep++;
+    if (navigator.vibrate) navigator.vibrate(15 + rampStep * 8);
+  }, 250);
+});
+
+silentCountMain.addEventListener('pointerup', () => {
+  if (silentCountPressTimer) {
+    // Released before the long-press threshold -- it was a tap.
+    clearSilentCountPress();
+    silentCountIncrement();
+  }
+  // else: already handled as a long-press finish, or the gesture was
+  // cancelled -- nothing more to do.
+});
+
+silentCountMain.addEventListener('pointercancel', clearSilentCountPress);
+silentCountMain.addEventListener('pointerleave', clearSilentCountPress);
 
 // ============================================================
 // VOICE COUNT (sound-triggered auto-counting, optional add-on

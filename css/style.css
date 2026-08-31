@@ -644,6 +644,68 @@ html, body {
   margin-top: 2px;
 }
 
+/* ---------- Silent Count (standalone full-screen) ---------- */
+.silent-count-screen {
+  background: linear-gradient(160deg, #fff 0%, var(--saffron-light) 140%);
+  position: relative;
+  z-index: 300;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.silent-count-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 26px;
+  z-index: 2;
+}
+.silent-count-intro {
+  max-width: 360px;
+}
+.silent-count-intro h2 {
+  font-family: 'Tiro Devanagari Hindi', serif;
+  font-size: 24px;
+  color: var(--saffron-dark);
+  margin: 4px 0 16px;
+}
+.silent-count-intro p {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0 0 16px;
+  text-align: left;
+}
+.silent-count-intro .btn {
+  margin-top: 8px;
+}
+.silent-count-main {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.silent-count-om {
+  font-size: 48px;
+  margin-bottom: 8px;
+  opacity: 0.85;
+}
+.silent-count-value {
+  font-size: 84px;
+  font-weight: 700;
+  color: var(--saffron-dark);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.silent-count-caption {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .toast {
   position: fixed;
   bottom: 24px;

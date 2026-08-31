@@ -128,6 +128,9 @@
       <div class="action-row">
         <button id="startSessionBtn" class="btn btn-outline btn-full">Start Jaap Session</button>
       </div>
+      <div class="action-row">
+        <button id="startSilentCountBtn" class="btn btn-outline btn-full">🙏 Silent Count (eyes closed)</button>
+      </div>
     </section>
 
     <!-- ---------- MILESTONES TAB ---------- -->
@@ -255,6 +258,25 @@
     </section>
 
   </main>
+</div>
+
+<!-- ===================== SILENT COUNT (standalone, full-screen) ===================== -->
+<div id="silentCountScreen" class="screen center-screen hidden silent-count-screen">
+  <button id="silentCountCloseBtn" class="icon-btn silent-count-close" aria-label="Cancel and discard">&times;</button>
+
+  <div id="silentCountIntro" class="silent-count-intro">
+    <div class="om-mark">राम</div>
+    <h2>Silent Count</h2>
+    <p><strong>Tap anywhere</strong> on the screen to count. You'll feel a short buzz each time, and a longer double-buzz every 108 (one mala).</p>
+    <p><strong>Hold anywhere for about 1.5 seconds</strong> to finish — you'll feel it building as you hold, then a final buzz confirms it saved. No need to look.</p>
+    <button id="silentCountBeginBtn" class="btn btn-primary btn-full">Got it, begin</button>
+  </div>
+
+  <div id="silentCountMain" class="silent-count-main hidden">
+    <div class="om-mark silent-count-om">राम</div>
+    <div id="silentCountValue" class="silent-count-value">0</div>
+    <div class="silent-count-caption">Tap to count · Hold ~1.5s to finish</div>
+  </div>
 </div>
 
 <!-- ===================== MODALS ===================== -->
