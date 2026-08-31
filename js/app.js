@@ -4,7 +4,7 @@ import {
   onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, addDoc, deleteDoc, Timestamp
+  collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, addDoc, deleteDoc, Timestamp, increment
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const provider = new GoogleAuthProvider();
@@ -260,6 +260,20 @@ async function saveUserData() {
   await updateDoc(userRef, userData);
 }
 
+// Atomic server-side increment for lifetimeTotal, instead of reading the
+// current value into memory, adding to it, and writing the whole thing
+// back. That read-modify-write pattern races: if two devices are used
+// around the same time, both can read the same starting value, each add
+// their own entry, and whichever save lands last silently overwrites the
+// other's contribution. A Firestore increment() is applied atomically on
+// the server regardless of what either client had in memory, so this
+// can't happen no matter how the two writes interleave.
+async function adjustLifetimeTotal(delta) {
+  const userRef = doc(db, 'users', currentUser.uid);
+  await updateDoc(userRef, { lifetimeTotal: increment(delta) });
+  userData.lifetimeTotal = (userData.lifetimeTotal || 0) + delta;
+}
+
 async function addJaapEntry(count, date, notes = '') {
   const safeCount = Math.max(0, Math.round(count));
   const entry = {
@@ -269,12 +283,13 @@ async function addJaapEntry(count, date, notes = '') {
     notes,
     createdAt: Timestamp.now(),
   };
-  userData.lifetimeTotal = (userData.lifetimeTotal || 0) + safeCount;
   // Independent writes to different documents -- run in parallel instead
   // of one after another to roughly halve the network round-trip time.
+  // lifetimeTotal uses an atomic increment so this is safe even if
+  // another device is adding entries at the same time.
   await Promise.all([
     addDoc(collection(db, 'jaapEntries'), entry),
-    saveUserData(),
+    adjustLifetimeTotal(safeCount),
   ]);
   refreshUI();
   showToast('Jaap entry saved');
@@ -697,8 +712,7 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
   if (newCount > 0) {
     const ref = doc(db, 'jaapEntries', currentEditId);
     await updateDoc(ref, { count: newCount, date: newDate });
-    userData.lifetimeTotal = (userData.lifetimeTotal || 0) + (newCount - currentEditOldCount);
-    await saveUserData();
+    await adjustLifetimeTotal(newCount - currentEditOldCount);
     closeAllModals();
     refreshUI();
     showToast('Entry updated');
@@ -709,8 +723,7 @@ document.getElementById('deleteEntryReduceBtn').addEventListener('click', async 
   if (!currentEditId) return;
   if (confirm('Delete this entry and reduce your lifetime count by its amount?')) {
     await deleteDoc(doc(db, 'jaapEntries', currentEditId));
-    userData.lifetimeTotal = Math.max(0, (userData.lifetimeTotal || 0) - currentEditOldCount);
-    await saveUserData();
+    await adjustLifetimeTotal(-currentEditOldCount);
     closeAllModals();
     refreshUI();
     showToast('Entry deleted, lifetime count reduced');
