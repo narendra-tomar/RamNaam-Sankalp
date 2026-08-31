@@ -585,10 +585,9 @@ html, body {
 
 .session-om {
   font-family: 'Tiro Devanagari Hindi', serif;
-  font-size: 32px;
+  font-size: 64px;
   text-align: center;
-  color: var(--saffron-dark);
-  margin: 12px 0;
+  margin: 20px 0;
 }
 .session-timer {
   text-align: center;
@@ -689,9 +688,8 @@ html, body {
   cursor: pointer;
 }
 .silent-count-om {
-  font-size: 48px;
-  margin-bottom: 8px;
-  opacity: 0.85;
+  font-size: 88px;
+  margin-bottom: 16px;
 }
 .silent-count-value {
   font-size: 84px;
@@ -704,6 +702,54 @@ html, body {
   margin-top: 16px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* ---------- Decorative "राम" for active-chanting screens ---------- */
+.om-decorative {
+  position: relative;
+  display: inline-block;
+  background: linear-gradient(135deg, #d97b2e 0%, #f4c15c 45%, #b8601c 55%, #f4c15c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: omPulseGlow 3s ease-in-out infinite;
+}
+.om-decorative::before,
+.om-decorative::after {
+  content: '❉';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.32em;
+  color: var(--saffron);
+  opacity: 0.55;
+  animation: omPulseGlow 3s ease-in-out infinite;
+  -webkit-text-fill-color: var(--saffron);
+}
+.om-decorative::before { left: -0.85em; }
+.om-decorative::after { right: -0.85em; }
+
+@keyframes omPulseGlow {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(217, 123, 46, 0.45),
+      0 0 22px rgba(196, 30, 30, 0.22);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(217, 123, 46, 0.85),
+      0 0 40px rgba(196, 30, 30, 0.5),
+      0 0 60px rgba(196, 30, 30, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .om-decorative,
+  .om-decorative::before,
+  .om-decorative::after {
+    animation: none;
+    text-shadow: 0 0 14px rgba(217, 123, 46, 0.5);
+  }
 }
 
 .toast {
