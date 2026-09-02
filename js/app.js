@@ -1289,6 +1289,9 @@ let silentCountValue = 0;
 let silentCountPressTimer = null;
 let silentCountRampInterval = null;
 let silentCountFinished = false;
+let silentCountStartTime = null;
+let silentCountElapsed = 0;
+let silentCountTimerInterval = null;
 const SILENT_COUNT_LONG_PRESS_MS = 1500;
 
 document.getElementById('startSilentCountBtn').addEventListener('click', () => {
@@ -1303,6 +1306,7 @@ document.getElementById('startSilentCountBtn').addEventListener('click', () => {
 document.getElementById('silentCountBeginBtn').addEventListener('click', () => {
   document.getElementById('silentCountIntro').classList.add('hidden');
   document.getElementById('silentCountMain').classList.remove('hidden');
+  startSilentCountTimer();
 });
 
 document.getElementById('silentCountCloseBtn').addEventListener('click', () => {
@@ -1310,8 +1314,27 @@ document.getElementById('silentCountCloseBtn').addEventListener('click', () => {
   if (silentCountValue > 0 && !confirm(`Discard this count of ${silentCountValue}? This cannot be undone.`)) {
     return;
   }
+  stopSilentCountTimer();
   document.getElementById('silentCountScreen').classList.add('hidden');
 });
+
+// Auto-running timer, no pause -- eyes-closed use has no reason to pause,
+// it just records total elapsed time for the session.
+function startSilentCountTimer() {
+  silentCountElapsed = 0;
+  silentCountStartTime = Date.now();
+  document.getElementById('silentCountTimer').textContent = '00:00:00';
+  clearInterval(silentCountTimerInterval);
+  silentCountTimerInterval = setInterval(() => {
+    silentCountElapsed = Math.floor((Date.now() - silentCountStartTime) / 1000);
+    document.getElementById('silentCountTimer').textContent = formatTime(silentCountElapsed);
+  }, 1000);
+}
+
+function stopSilentCountTimer() {
+  clearInterval(silentCountTimerInterval);
+  silentCountTimerInterval = null;
+}
 
 function clearSilentCountRamp() {
   if (silentCountRampInterval) {
@@ -1346,13 +1369,15 @@ async function silentCountFinish() {
 
   if (navigator.vibrate) navigator.vibrate(200); // final "saved" buzz
 
+  stopSilentCountTimer();
   const countToSave = silentCountValue;
+  const timeToSave = silentCountElapsed;
   silentCountValue = 0;
   document.getElementById('silentCountScreen').classList.add('hidden');
 
   if (countToSave > 0) {
     try {
-      await addJaapEntry(countToSave, getTodayStr(), 'Silent Count');
+      await addJaapEntry(countToSave, getTodayStr(), `Silent Count: ${formatTime(timeToSave)}`);
     } catch (err) {
       console.error('Error saving silent count entry:', err);
       showToast('Could not save silent count -- check your connection and add it manually if needed');
